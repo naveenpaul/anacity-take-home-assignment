@@ -14,6 +14,7 @@ const PERMISSIONS = [
   'assign_roles',
   'manage_units',
   'create_unit_action',
+  'manage_branding',
 ];
 
 const TEMPLATES = [

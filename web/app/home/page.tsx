@@ -33,6 +33,23 @@ export default async function HomePage() {
         <LogoutButton />
       </div>
 
+      {tenant && visible.some((m) => m.roles.some((r) => r.role.templateKey === 'admin')) ? (
+        <section className="border border-gray-200 rounded p-3 flex items-center justify-between bg-gray-50">
+          <div>
+            <p className="text-sm font-medium">Tenant admin</p>
+            <p className="text-xs text-gray-500">
+              You&apos;re admin in at least one {tenant.name} community.
+            </p>
+          </div>
+          <Link
+            href="/admin/branding"
+            className="text-sm text-blue-600 hover:underline"
+          >
+            Brand settings →
+          </Link>
+        </section>
+      ) : null}
+
       <section className="space-y-3">
         <h3 className="text-lg font-semibold">
           Your communities {tenant ? `at ${tenant.name}` : ''} ({visible.length})
