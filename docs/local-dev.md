@@ -42,13 +42,15 @@ Verify the seed:
 ```bash
 pnpm db:status
 # Expected:
-#   tenants:      2 (prestige, sobha)
-#   communities:  4 (lakeside, falcon, dream_acres, forest_view)
-#   blocks:       9
-#   units:       36
-#   users:        5 (alice, bob, carol, dave, ravi)
-#   roles:        8 (4 system templates × 2 tenants, instantiated per community)
-#   memberships:  9
+#   tenants:           2 (prestige, sobha)
+#   communities:       4 (lakeside, falcon, dream_acres, forest_view)
+#   blocks:            9
+#   units:            36
+#   users:             5 (alice, bob, carol, dave, ravi)
+#   memberships:       9
+#   templates:         4
+#   roles:            16 (4 system templates × 4 communities, instantiated per community)
+#   permissions:      10
 ```
 
 ---

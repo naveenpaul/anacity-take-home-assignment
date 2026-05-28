@@ -1,0 +1,236 @@
+// Anacity — Prisma schema
+// Reflects the locked entities in anacity_rearchitecture_design.md §4.
+// Soft-delete partial uniques (e.g. Membership UNIQUE WHERE deleted_at IS NULL)
+// are noted inline; W2 will replace the full uniques with raw-SQL partial
+// indexes. POC seed does not soft-delete, so full uniques are safe now.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// TENANCY + HIERARCHY
+// ============================================================================
+
+model Tenant {
+  id        String   @id @default(uuid()) @db.Uuid
+  slug      String   @unique
+  name      String
+  branding  Json     @default("{}")
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  communities Community[]
+  roles       Role[]
+
+  @@map("tenants")
+}
+
+model Community {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  blocks      Block[]
+  memberships Membership[]
+  roles       Role[]
+  actions     UnitAction[]
+
+  @@index([tenantId])
+  @@map("communities")
+}
+
+model Block {
+  id          String   @id @default(uuid()) @db.Uuid
+  communityId String   @map("community_id") @db.Uuid
+  name        String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  community       Community        @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  units           Unit[]
+  membershipRoles MembershipRole[]
+
+  @@index([communityId])
+  @@map("blocks")
+}
+
+model Unit {
+  id        String   @id @default(uuid()) @db.Uuid
+  blockId   String   @map("block_id") @db.Uuid
+  label     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  block           Block            @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  membershipRoles MembershipRole[]
+  actions         UnitAction[]
+
+  @@index([blockId])
+  @@map("units")
+}
+
+// ============================================================================
+// IDENTITY
+// ============================================================================
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  name         String
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  memberships   Membership[]
+  grantedRoles  MembershipRole[] @relation("grantedBy")
+  actions       UnitAction[]
+  rbacAuditLogs RbacAuditLog[]
+
+  @@map("users")
+}
+
+model Membership {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  communityId String    @map("community_id") @db.Uuid
+  status      String    @default("active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  community       Community        @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  membershipRoles MembershipRole[]
+
+  @@unique([userId, communityId])
+  @@index([communityId])
+  @@map("memberships")
+}
+
+// ============================================================================
+// RBAC
+// ============================================================================
+
+model Permission {
+  id  String @id @default(uuid()) @db.Uuid
+  key String @unique
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model SystemRoleTemplate {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique
+  name        String
+  description String?
+  permissions String[]
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("system_role_templates")
+}
+
+model Role {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  communityId String?   @map("community_id") @db.Uuid
+  templateKey String?   @map("template_key")
+  name        String
+  description String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  community       Community?       @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  rolePermissions RolePermission[]
+  membershipRoles MembershipRole[]
+
+  @@unique([communityId, name])
+  @@index([tenantId])
+  @@map("roles")
+}
+
+model RolePermission {
+  roleId       String @map("role_id") @db.Uuid
+  permissionId String @map("permission_id") @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model MembershipRole {
+  id           String   @id @default(uuid()) @db.Uuid
+  membershipId String   @map("membership_id") @db.Uuid
+  roleId       String   @map("role_id") @db.Uuid
+  blockId      String?  @map("block_id") @db.Uuid
+  unitId       String?  @map("unit_id") @db.Uuid
+  grantedById  String   @map("granted_by") @db.Uuid
+  grantedAt    DateTime @default(now()) @map("granted_at")
+
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  block      Block?     @relation(fields: [blockId], references: [id], onDelete: SetNull)
+  unit       Unit?      @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  grantedBy  User       @relation("grantedBy", fields: [grantedById], references: [id])
+
+  @@unique([membershipId, roleId, blockId, unitId])
+  @@index([roleId])
+  @@map("membership_roles")
+}
+
+// ============================================================================
+// ACTIONS + AUDIT
+// ============================================================================
+
+model UnitAction {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  communityId String   @map("community_id") @db.Uuid
+  blockId     String   @map("block_id") @db.Uuid
+  unitId      String   @map("unit_id") @db.Uuid
+  unitLabel   String   @map("unit_label")
+  actorUserId String   @map("actor_user_id") @db.Uuid
+  actionType  String   @map("action_type")
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: NoAction)
+  unit      Unit      @relation(fields: [unitId], references: [id], onDelete: NoAction)
+  actor     User      @relation(fields: [actorUserId], references: [id], onDelete: NoAction)
+
+  @@index([communityId, createdAt(sort: Desc)])
+  @@index([unitId, createdAt(sort: Desc)])
+  @@map("unit_actions")
+}
+
+model RbacAuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  actorUserId String   @map("actor_user_id") @db.Uuid
+  entity      String
+  entityId    String   @map("entity_id") @db.Uuid
+  action      String
+  before      Json?
+  after       Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  actor User @relation(fields: [actorUserId], references: [id], onDelete: NoAction)
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@map("rbac_audit_log")
+}

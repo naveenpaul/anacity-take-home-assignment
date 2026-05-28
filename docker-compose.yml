@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: anacity_postgres
+    environment:
+      POSTGRES_USER: anacity
+      POSTGRES_PASSWORD: anacity
+      POSTGRES_DB: anacity
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U anacity"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: anacity_redis
+    ports:
+      - "6379:6379"
+    profiles:
+      - cache
+
+volumes:
+  postgres_data:
