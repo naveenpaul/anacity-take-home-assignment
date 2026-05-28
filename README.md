@@ -18,6 +18,66 @@ A focused test plan is in [`docs/test-plan.md`](./docs/test-plan.md).
 
 ---
 
+## Run it locally
+
+Prerequisites: Node 20+, pnpm 9+, Docker (with the daemon running).
+
+```bash
+pnpm install
+cp .env.example .env
+docker compose up -d postgres        # Postgres on host port 5433
+pnpm db:migrate                      # apply Prisma schema
+pnpm db:seed                         # 2 tenants × 2 communities, 5 users
+pnpm dev                             # api :3001, web :3000
+```
+
+Then open in your browser (no `/etc/hosts` edits — modern browsers
+resolve `*.localhost` to 127.0.0.1):
+
+- `http://prestige.localhost:3000` — blue Prestige brand
+- `http://sobha.localhost:3000` — green Sobha brand
+
+Seed users (password is always `dev`):
+
+| Email | Use for |
+|---|---|
+| `alice@prestige.dev` | Admin @ Lakeside, Resident @ Falcon — multi-community within a tenant |
+| `bob@sobha.dev` | Admin @ both Sobha communities |
+| `carol@anacity.dev` | Resident in BOTH Prestige Lakeside AND Sobha Dream Acres — cross-tenant identity |
+| `dave@prestige.dev` | Resident @ Falcon — recipient of the dynamic-role demo |
+| `ravi@prestige.dev` | Security across both Prestige communities |
+
+### Run the test suite
+
+```bash
+pnpm --filter api test           # all 18 isolation tests, ~6s
+pnpm --filter api test:isolation # same suite, named target
+```
+
+The suite covers every row of design doc §12: cross-tenant deny,
+cross-community deny, privilege-escalation block, revoke-takes-effect,
+block-scoped grant enforcement, hierarchy validation, append-only
+UnitAction, and cross-tenant identity.
+
+### Demo flow (matches design doc §9)
+
+1. `prestige.localhost:3000` → log in as **alice** → see Lakeside +
+   Falcon side-by-side, no Sobha leakage
+2. "Open dashboard →" on Lakeside → drill to a unit → "+ Action" →
+   record `visitor_approved`
+3. New tab to `sobha.localhost:3000` → log in as **carol** → only
+   Sobha Dream Acres visible (same identity, different scope per host)
+4. As alice → "Roles" → "+ New custom role" → "Night Shift Security"
+   with `approve_visitor` only → save
+5. "Memberships" → grant Night Shift Security to **dave** with Block
+   scope = Block A → save
+6. Sign in as **dave** → on Block A units the "Approve visitor"
+   action appears; on Block B units it doesn't (scope enforced)
+7. "Brand settings" → change Prestige primary color → header swatch
+   updates on next navigation
+
+---
+
 ## The problem (limitations in the current system)
 
 | # | Limitation | Why it hurts users |
@@ -190,13 +250,28 @@ taking effect on the next request.
 | See the test plan | §12 of the design doc; QA-focused view in [`docs/test-plan.md`](./docs/test-plan.md) |
 | See the implementation workstreams | [`docs/workstreams.md`](./docs/workstreams.md) |
 | See how to run it locally | [`docs/local-dev.md`](./docs/local-dev.md) — `*.localhost` tenant pattern, seed users, common workflows |
+| See the isolation tests | [`api/test/isolation/`](./api/test/isolation/) — 7 specs, 18 tests, one per row of design §12 |
 
 ---
 
 ## Status
 
-This submission is a **design + working POC**. Every architectural
-decision, data-model field, authorization path, and required test is
-specified in the design doc. The POC demonstrates the load-bearing
-claims end-to-end: tenant boundary, multi-community management, stateless
-URLs, dynamic role creation and assignment, and instant revocation.
+This submission is a **design + working POC + isolation test suite**.
+The repo ships in six commits on `main`:
+
+| Commit | Workstream |
+|---|---|
+| `cabe21a` | Design + supporting docs (scope rationale, test plan, workstreams, local-dev) |
+| `f780063` | W1 — Monorepo + Prisma schema + seed (2 tenants × 2 communities × 5 users) |
+| `485e57c` | W2 — Auth + dynamic RBAC + admin UI for roles and memberships |
+| `6ff2c58` | W3 — UnitAction recording + per-community dashboard with activity feed |
+| `a3b1ffe` | W4 — Tenant branding admin (`manage_branding` permission + editor) |
+| `5c30be2` | W5 — Isolation matrix (18 tests, 7 suites, all green in ~6s) |
+
+Every load-bearing claim in the design has working code, a UI page,
+and a passing test (where the claim is API-enforceable). What's
+deliberately not shipped — Postgres RLS, vanity-domain TLS, Redis
+ability cache, `pg_partman` partitioning, temporal `UnitOccupant`,
+Playwright E2E — is documented in
+[`docs/scope-rationale.md`](./docs/scope-rationale.md) with the
+upgrade path for each.
