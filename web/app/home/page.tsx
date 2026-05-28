@@ -22,57 +22,75 @@ export default async function HomePage() {
     ),
   );
 
+  const hasAdmin = visible.some((m) =>
+    m.roles.some((r) => r.role.templateKey === 'admin'),
+  );
+
   return (
-    <div className="space-y-8">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm text-gray-500">Signed in as</p>
-          <h2 className="text-2xl font-semibold">{me.name}</h2>
-          <p className="text-sm text-gray-500">{me.email}</p>
+    <div className="space-y-10">
+      <div className="flex items-start justify-between gap-6">
+        <div className="space-y-1">
+          <p className="text-xs uppercase tracking-wider font-medium text-ink-tertiary">
+            Signed in
+          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">{me.name}</h1>
+          <p className="font-mono text-xs text-ink-tertiary">{me.email}</p>
         </div>
         <LogoutButton />
       </div>
 
-      {tenant && visible.some((m) => m.roles.some((r) => r.role.templateKey === 'admin')) ? (
-        <section className="border border-gray-200 rounded p-3 flex items-center justify-between bg-gray-50">
+      {tenant && hasAdmin ? (
+        <div className="border border-line rounded-sm p-4 flex items-center justify-between bg-surface-raised">
           <div>
             <p className="text-sm font-medium">Tenant admin</p>
-            <p className="text-xs text-gray-500">
-              You&apos;re admin in at least one {tenant.name} community.
+            <p className="text-xs text-ink-secondary mt-0.5">
+              You're admin in at least one {tenant.name} community.
             </p>
           </div>
           <Link
             href="/admin/branding"
-            className="text-sm text-blue-600 hover:underline"
+            className="text-sm font-medium hover:underline"
+            style={{ color: 'var(--brand-primary)' }}
           >
             Brand settings →
           </Link>
-        </section>
+        </div>
       ) : null}
 
-      <section className="space-y-3">
-        <h3 className="text-lg font-semibold">
-          Your communities {tenant ? `at ${tenant.name}` : ''} ({visible.length})
-        </h3>
+      <section className="space-y-4">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-sm uppercase tracking-wider font-medium text-ink-tertiary">
+            Your communities {tenant ? `at ${tenant.name}` : ''}
+          </h2>
+          <span className="font-mono text-xs text-ink-tertiary">
+            {visible.length}
+          </span>
+        </div>
+
         {visible.length === 0 ? (
-          <p className="text-sm text-gray-500">
-            You have no memberships on this tenant.
+          <div className="border border-line rounded-sm p-6 space-y-3">
+            <p className="text-sm text-ink-secondary">
+              You have no memberships on this tenant.
+            </p>
             {otherTenants.length > 0 ? (
-              <>
-                {' '}
-                But you have memberships at:{' '}
-                {otherTenants.map((s) => (
-                  <a
-                    key={s}
-                    href={`http://${s}.localhost:3000/home`}
-                    className="text-blue-600 underline mr-2"
-                  >
-                    {s}.localhost
-                  </a>
-                ))}
-              </>
+              <p className="text-xs text-ink-tertiary">
+                Try{' '}
+                {otherTenants.map((s, i) => (
+                  <span key={s}>
+                    <a
+                      href={`http://${s}.localhost:3000/home`}
+                      className="font-mono hover:underline"
+                      style={{ color: 'var(--brand-primary)' }}
+                    >
+                      {s}.localhost
+                    </a>
+                    {i < otherTenants.length - 1 ? ', ' : ''}
+                  </span>
+                ))}{' '}
+                where you are a member.
+              </p>
             ) : null}
-          </p>
+          </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             {visible.map((m) => {
@@ -80,48 +98,46 @@ export default async function HomePage() {
               return (
                 <div
                   key={m.id}
-                  className="border border-gray-200 rounded p-4 space-y-2"
+                  className="border border-line rounded-sm hover:border-line-strong transition-colors"
                 >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Link
-                        href={`/c/${m.community.id}`}
-                        className="font-medium hover:underline"
+                  <Link href={`/c/${m.community.id}`} className="block p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{m.community.name}</p>
+                        <p className="text-xs text-ink-tertiary mt-0.5">
+                          {m.community.tenant.name}
+                        </p>
+                      </div>
+                      <span
+                        className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0"
+                        style={{
+                          background: 'var(--brand-primary-soft)',
+                          color: 'var(--brand-primary)',
+                        }}
                       >
-                        {m.community.name}
-                      </Link>
-                      <p className="text-xs text-gray-500">{m.community.tenant.name}</p>
+                        {m.roles[0]?.role.name ?? 'No role'}
+                      </span>
                     </div>
-                    <span className="text-xs px-2 py-0.5 rounded bg-gray-100">
-                      {m.roles.map((r) => r.role.name).join(', ') || 'No role'}
-                    </span>
-                  </div>
-                  <div className="flex gap-2 pt-2 text-sm">
-                    <Link
-                      href={`/c/${m.community.id}`}
-                      className="text-blue-600 hover:underline"
-                    >
+                    <p className="text-sm font-medium" style={{ color: 'var(--brand-primary)' }}>
                       Open dashboard →
-                    </Link>
-                    {isAdmin ? (
-                      <>
-                        <span className="text-gray-300">·</span>
-                        <Link
-                          href={`/admin/${m.community.id}/roles`}
-                          className="text-blue-600 hover:underline"
-                        >
-                          Roles
-                        </Link>
-                        <span className="text-gray-300">·</span>
-                        <Link
-                          href={`/admin/${m.community.id}/memberships`}
-                          className="text-blue-600 hover:underline"
-                        >
-                          Memberships
-                        </Link>
-                      </>
-                    ) : null}
-                  </div>
+                    </p>
+                  </Link>
+                  {isAdmin ? (
+                    <div className="border-t border-line px-4 py-2 flex gap-4 text-xs">
+                      <Link
+                        href={`/admin/${m.community.id}/roles`}
+                        className="text-ink-secondary hover:text-ink transition-colors"
+                      >
+                        Roles
+                      </Link>
+                      <Link
+                        href={`/admin/${m.community.id}/memberships`}
+                        className="text-ink-secondary hover:text-ink transition-colors"
+                      >
+                        Memberships
+                      </Link>
+                    </div>
+                  ) : null}
                 </div>
               );
             })}
@@ -130,20 +146,23 @@ export default async function HomePage() {
       </section>
 
       {otherTenants.length > 0 && visible.length > 0 ? (
-        <section className="text-sm text-gray-600 border-t pt-4">
-          You also have memberships at:{' '}
-          {otherTenants.map((s) => (
-            <a
-              key={s}
-              href={`http://${s}.localhost:3000/home`}
-              className="text-blue-600 underline mr-2"
-            >
-              {s}.localhost
-            </a>
-          ))}
-          <p className="text-xs text-gray-400 mt-1">
-            (Same identity. Each tenant subdomain only shows you that
-            tenant&apos;s communities — see design doc §3 for the resolver.)
+        <section className="text-xs text-ink-tertiary border-t border-line pt-6">
+          <p>
+            You also have memberships at{' '}
+            {otherTenants.map((s, i) => (
+              <span key={s}>
+                <a
+                  href={`http://${s}.localhost:3000/home`}
+                  className="font-mono hover:underline"
+                  style={{ color: 'var(--brand-primary)' }}
+                >
+                  {s}.localhost
+                </a>
+                {i < otherTenants.length - 1 ? ', ' : ''}
+              </span>
+            ))}
+            . Same identity. Each tenant subdomain only shows you that
+            tenant's communities — see design doc §3 for the resolver.
           </p>
         </section>
       ) : null}

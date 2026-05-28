@@ -3,12 +3,12 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-const SEED_USERS: Array<{ email: string; label: string }> = [
-  { email: 'alice@prestige.dev', label: 'Alice — admin @ Lakeside, resident @ Falcon' },
-  { email: 'bob@sobha.dev', label: 'Bob — admin @ both Sobha' },
-  { email: 'carol@anacity.dev', label: 'Carol — cross-tenant resident' },
-  { email: 'dave@prestige.dev', label: 'Dave — resident @ Falcon' },
-  { email: 'ravi@prestige.dev', label: 'Ravi — security across both Prestige' },
+const SEED_USERS: Array<{ email: string; label: string; role: string }> = [
+  { email: 'alice@prestige.dev', role: 'Admin @ Lakeside, Resident @ Falcon', label: 'Alice' },
+  { email: 'bob@sobha.dev', role: 'Admin @ both Sobha communities', label: 'Bob' },
+  { email: 'carol@anacity.dev', role: 'Resident @ Lakeside AND Dream Acres', label: 'Carol' },
+  { email: 'dave@prestige.dev', role: 'Resident @ Falcon', label: 'Dave' },
+  { email: 'ravi@prestige.dev', role: 'Security across both Prestige', label: 'Ravi' },
 ];
 
 export default function LoginPage() {
@@ -42,53 +42,72 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="max-w-md space-y-6">
-      <h2 className="text-2xl font-semibold">Sign in</h2>
+    <div className="max-w-sm mx-auto space-y-10 pt-10">
+      <div className="space-y-2">
+        <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
+        <p className="text-sm text-ink-secondary">
+          Authenticate to manage communities, units, and roles.
+        </p>
+      </div>
 
-      <form onSubmit={handleSubmit} className="space-y-3">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-1">Email</label>
+          <label className="block text-xs font-medium text-ink-secondary mb-1.5">
+            Email
+          </label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full border border-gray-300 rounded px-3 py-2"
+            className="w-full border border-line-strong bg-surface rounded text-sm px-3 py-2 focus:outline-none"
             required
+            autoComplete="email"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Password</label>
+          <label className="block text-xs font-medium text-ink-secondary mb-1.5">
+            Password
+          </label>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full border border-gray-300 rounded px-3 py-2"
+            className="w-full border border-line-strong bg-surface rounded text-sm px-3 py-2 focus:outline-none"
             required
+            autoComplete="current-password"
           />
         </div>
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {error ? (
+          <p className="text-sm text-danger border-l-2 border-danger pl-3 py-1">
+            {error}
+          </p>
+        ) : null}
         <button
           type="submit"
           disabled={busy}
-          className="px-4 py-2 rounded text-white disabled:opacity-50"
+          className="w-full text-sm font-medium text-white rounded py-2 disabled:opacity-50 transition-opacity"
           style={{ background: 'var(--brand-primary)' }}
         >
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
 
-      <div className="border-t pt-4 space-y-2">
-        <p className="text-sm font-medium">Seed users (password is always <code>dev</code>):</p>
-        <ul className="space-y-1">
+      <div className="space-y-3 border-t border-line pt-6">
+        <p className="text-xs uppercase tracking-wider font-medium text-ink-tertiary">
+          Seed users · password is <span className="font-mono normal-case tracking-normal">dev</span>
+        </p>
+        <ul className="space-y-1.5">
           {SEED_USERS.map((u) => (
             <li key={u.email}>
               <button
                 onClick={() => setEmail(u.email)}
-                className="text-left text-sm text-blue-600 hover:underline"
+                className="w-full text-left group"
               >
-                {u.email}
+                <div className="font-mono text-xs text-ink-secondary group-hover:text-ink transition-colors">
+                  {u.email}
+                </div>
+                <div className="text-xs text-ink-tertiary">{u.role}</div>
               </button>
-              <span className="text-xs text-gray-500"> — {u.label}</span>
             </li>
           ))}
         </ul>

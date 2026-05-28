@@ -18,7 +18,7 @@ export default function LogoutButton() {
     <button
       onClick={handleLogout}
       disabled={busy}
-      className="text-sm text-gray-600 hover:text-gray-900 underline disabled:opacity-50"
+      className="text-xs text-ink-secondary hover:text-ink transition-colors disabled:opacity-50"
     >
       {busy ? 'Signing out…' : 'Sign out'}
     </button>

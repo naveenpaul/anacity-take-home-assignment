@@ -20,7 +20,11 @@ type Membership = {
   }>;
 };
 
-export default async function MembershipsAdminPage({ params }: { params: { cid: string } }) {
+export default async function MembershipsAdminPage({
+  params,
+}: {
+  params: { cid: string };
+}) {
   const me = await getCurrentUser();
   if (!me) redirect('/login');
 
@@ -36,11 +40,16 @@ export default async function MembershipsAdminPage({ params }: { params: { cid: 
   if (!memberships || !roles) {
     return (
       <div className="space-y-4">
-        <h2 className="text-2xl font-semibold">Permission denied</h2>
-        <p className="text-sm text-gray-600">
-          You don&apos;t have <code>assign_roles</code> in this community.
+        <h1 className="text-2xl font-semibold tracking-tight">Permission denied</h1>
+        <p className="text-sm text-ink-secondary">
+          You don't have <code className="font-mono">assign_roles</code> in this
+          community.
         </p>
-        <Link href="/home" className="text-blue-600 hover:underline">
+        <Link
+          href="/home"
+          className="text-sm hover:underline"
+          style={{ color: 'var(--brand-primary)' }}
+        >
           ← Back to home
         </Link>
       </div>
@@ -48,21 +57,33 @@ export default async function MembershipsAdminPage({ params }: { params: { cid: 
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-sm text-gray-500">
-          <Link href="/home" className="hover:underline">
-            ← Home
+    <div className="space-y-8">
+      <div className="space-y-3">
+        <nav className="flex items-center gap-2 text-xs text-ink-tertiary">
+          <Link href="/home" className="hover:text-ink transition-colors">
+            Home
           </Link>
-          {' · '}
-          <Link href={`/admin/${params.cid}/roles`} className="hover:underline">
+          <span>/</span>
+          <Link
+            href={`/c/${params.cid}`}
+            className="hover:text-ink transition-colors"
+          >
+            {membership.community.name}
+          </Link>
+          <span>/</span>
+          <Link
+            href={`/admin/${params.cid}/roles`}
+            className="hover:text-ink transition-colors"
+          >
             Roles
           </Link>
-        </p>
-        <h2 className="text-2xl font-semibold mt-2">Memberships · {membership.community.name}</h2>
-        <p className="text-sm text-gray-500">
-          Assign or revoke roles per user. Block scope is optional — leave blank
-          for community-wide.
+          <span>/</span>
+          <span className="text-ink-secondary">Memberships</span>
+        </nav>
+        <h1 className="text-2xl font-semibold tracking-tight">Memberships</h1>
+        <p className="text-sm text-ink-secondary max-w-xl">
+          Assign or revoke roles per user. Block scope is optional — leave
+          blank for community-wide.
         </p>
       </div>
 

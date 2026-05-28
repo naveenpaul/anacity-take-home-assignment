@@ -23,10 +23,10 @@ export default async function BrandingPage() {
   if (!tenant) {
     return (
       <div className="space-y-4">
-        <h2 className="text-2xl font-semibold">No tenant context</h2>
-        <p className="text-sm text-gray-600">
+        <h1 className="text-2xl font-semibold tracking-tight">No tenant context</h1>
+        <p className="text-sm text-ink-secondary">
           Visit this page via a tenant subdomain (e.g.{' '}
-          <code>prestige.localhost:3000/admin/branding</code>).
+          <code className="font-mono">prestige.localhost:3000/admin/branding</code>).
         </p>
       </div>
     );
@@ -34,11 +34,15 @@ export default async function BrandingPage() {
   if (!detail) {
     return (
       <div className="space-y-4">
-        <h2 className="text-2xl font-semibold">Forbidden</h2>
-        <p className="text-sm text-gray-600">
-          You aren&apos;t a member of <strong>{tenant.name}</strong>.
+        <h1 className="text-2xl font-semibold tracking-tight">Forbidden</h1>
+        <p className="text-sm text-ink-secondary">
+          You aren't a member of <strong>{tenant.name}</strong>.
         </p>
-        <Link href="/home" className="text-blue-600 hover:underline">
+        <Link
+          href="/home"
+          className="text-sm hover:underline"
+          style={{ color: 'var(--brand-primary)' }}
+        >
           ← Back to home
         </Link>
       </div>
@@ -46,18 +50,20 @@ export default async function BrandingPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-sm text-gray-500">
-          <Link href="/home" className="hover:underline">
-            ← Home
+    <div className="space-y-8">
+      <div className="space-y-3">
+        <nav className="flex items-center gap-2 text-xs text-ink-tertiary">
+          <Link href="/home" className="hover:text-ink transition-colors">
+            Home
           </Link>
-        </p>
-        <h2 className="text-2xl font-semibold mt-2">Branding · {detail.name}</h2>
-        <p className="text-sm text-gray-500">
+          <span>/</span>
+          <span className="text-ink-secondary">Brand settings</span>
+        </nav>
+        <h1 className="text-2xl font-semibold tracking-tight">Brand settings</h1>
+        <p className="text-sm text-ink-secondary max-w-xl">
           Branding lives on the tenant, so it stays consistent across all of{' '}
-          <strong>{detail.name}</strong>&apos;s communities. Changes apply on
-          the next page load.
+          <strong>{detail.name}</strong>'s communities. Changes apply on the
+          next page load.
         </p>
       </div>
 
@@ -66,7 +72,7 @@ export default async function BrandingPage() {
         tenantSlug={detail.slug}
         initial={{
           logo: detail.branding?.logo ?? '',
-          primaryColor: detail.branding?.primaryColor ?? '#6b7280',
+          primaryColor: detail.branding?.primaryColor ?? '#525252',
           theme: detail.branding?.theme ?? 'default',
         }}
       />

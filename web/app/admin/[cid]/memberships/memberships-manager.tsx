@@ -53,7 +53,7 @@ export default function MembershipsManager({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {memberships.map((m) => (
         <MembershipRow
           key={m.id}
@@ -116,98 +116,111 @@ function MembershipRow({
   }
 
   return (
-    <div className="border border-gray-200 rounded p-4 space-y-2">
-      <div className="flex items-start justify-between">
-        <div>
-          <h4 className="font-medium">{membership.user.name}</h4>
-          <p className="text-xs text-gray-500">{membership.user.email}</p>
+    <div className="border border-line rounded-sm">
+      <div className="p-4 space-y-3">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="font-medium">{membership.user.name}</p>
+            <p className="text-xs font-mono text-ink-tertiary mt-0.5">
+              {membership.user.email}
+            </p>
+          </div>
+          <button
+            onClick={() => setGranting((g) => !g)}
+            className="text-xs font-medium hover:underline"
+            style={{ color: 'var(--brand-primary)' }}
+          >
+            {granting ? 'Cancel' : '+ Grant role'}
+          </button>
         </div>
-        <button
-          onClick={() => setGranting((g) => !g)}
-          className="text-sm text-blue-600 hover:underline"
-        >
-          {granting ? 'Cancel' : '+ Grant role'}
-        </button>
-      </div>
 
-      {membership.roles.length === 0 ? (
-        <p className="text-xs text-gray-500 italic">No roles</p>
-      ) : (
-        <div className="space-y-1">
-          {membership.roles.map((mr) => (
-            <div
-              key={mr.id}
-              className="flex items-center justify-between text-sm border-l-2 pl-2"
-              style={{ borderColor: 'var(--brand-primary)' }}
-            >
+        {membership.roles.length === 0 ? (
+          <p className="text-xs text-ink-tertiary italic">No roles</p>
+        ) : (
+          <div className="space-y-1">
+            {membership.roles.map((mr) => (
+              <div
+                key={mr.id}
+                className="flex items-center justify-between text-sm pl-3 border-l-2"
+                style={{ borderColor: 'var(--brand-primary)' }}
+              >
+                <div className="flex items-baseline gap-2">
+                  <span className="font-medium">{mr.role.name}</span>
+                  {mr.block ? (
+                    <span className="text-xs font-mono text-ink-tertiary px-1.5 py-0.5 rounded-full bg-surface-muted">
+                      scope: {mr.block.name}
+                    </span>
+                  ) : null}
+                  {mr.unit ? (
+                    <span className="text-xs font-mono text-ink-tertiary px-1.5 py-0.5 rounded-full bg-surface-muted">
+                      scope: unit {mr.unit.label}
+                    </span>
+                  ) : null}
+                </div>
+                <button
+                  onClick={() => onRevoke(membership.id, mr.id)}
+                  className="text-xs text-danger hover:opacity-80 transition-opacity"
+                >
+                  Revoke
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {granting ? (
+          <div className="border-t border-line pt-3 space-y-2">
+            <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
               <div>
-                <span className="font-medium">{mr.role.name}</span>
-                {mr.block ? (
-                  <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-100">
-                    scope: {mr.block.name}
-                  </span>
-                ) : null}
-                {mr.unit ? (
-                  <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-100">
-                    scope: unit {mr.unit.label}
-                  </span>
-                ) : null}
+                <label className="block text-xs font-medium text-ink-secondary mb-1">
+                  Role
+                </label>
+                <select
+                  value={roleId}
+                  onChange={(e) => setRoleId(e.target.value)}
+                  className="w-full border border-line-strong rounded text-sm px-2 py-1.5 bg-surface"
+                >
+                  {roles.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-ink-secondary mb-1">
+                  Scope (optional)
+                </label>
+                <select
+                  value={blockId}
+                  onChange={(e) => setBlockId(e.target.value)}
+                  className="w-full border border-line-strong rounded text-sm px-2 py-1.5 bg-surface"
+                >
+                  <option value="">community-wide</option>
+                  {blocks.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <button
-                onClick={() => onRevoke(membership.id, mr.id)}
-                className="text-xs text-red-600 hover:underline"
+                onClick={grant}
+                disabled={busy || !roleId}
+                className="text-sm font-medium text-white rounded px-3 py-1.5 disabled:opacity-50"
+                style={{ background: 'var(--brand-primary)' }}
               >
-                Revoke
+                {busy ? '…' : 'Grant'}
               </button>
             </div>
-          ))}
-        </div>
-      )}
-
-      {granting ? (
-        <div className="border-t pt-3 space-y-2">
-          <div className="flex gap-2 items-end">
-            <div className="flex-1">
-              <label className="block text-xs font-medium mb-1">Role</label>
-              <select
-                value={roleId}
-                onChange={(e) => setRoleId(e.target.value)}
-                className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-              >
-                {roles.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex-1">
-              <label className="block text-xs font-medium mb-1">Scope (optional)</label>
-              <select
-                value={blockId}
-                onChange={(e) => setBlockId(e.target.value)}
-                className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-              >
-                <option value="">(community-wide)</option>
-                {blocks.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <button
-              onClick={grant}
-              disabled={busy || !roleId}
-              className="px-3 py-1 rounded text-sm text-white disabled:opacity-50"
-              style={{ background: 'var(--brand-primary)' }}
-            >
-              {busy ? '…' : 'Grant'}
-            </button>
+            {error ? (
+              <p className="text-xs text-danger border-l-2 border-danger pl-2 py-1">
+                {error}
+              </p>
+            ) : null}
           </div>
-          {error ? <p className="text-xs text-red-600">{error}</p> : null}
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </div>
   );
 }

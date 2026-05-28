@@ -2,10 +2,78 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --brand-primary: #6b7280;
-}
+@layer base {
+  :root {
+    /* Surfaces */
+    --surface-base: #ffffff;
+    --surface-raised: #fafafa;
+    --surface-muted: #f4f4f5;
 
-body {
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    /* Text */
+    --text-primary: #0a0a0a;
+    --text-secondary: #525252;
+    --text-tertiary: #a3a3a3;
+
+    /* Borders */
+    --border-default: #e5e7eb;
+    --border-strong: #d4d4d8;
+
+    /* Brand accent — overridden per tenant in layout.tsx */
+    --brand-primary: #525252;
+    --brand-primary-soft: rgba(82, 82, 82, 0.1);
+
+    /* Semantic */
+    --success: #16a34a;
+    --warning: #d97706;
+    --danger: #dc2626;
+    --info: #2563eb;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --surface-base: #0a0a0a;
+      --surface-raised: #171717;
+      --surface-muted: #262626;
+      --text-primary: #fafafa;
+      --text-secondary: #a3a3a3;
+      --text-tertiary: #525252;
+      --border-default: #262626;
+      --border-strong: #404040;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --info: #3b82f6;
+    }
+  }
+
+  html {
+    background: var(--surface-base);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background: var(--surface-base);
+    color: var(--text-primary);
+  }
+
+  /* Numeric tabular by default on table cells */
+  td,
+  th {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Default focus ring uses brand accent */
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--surface-base), 0 0 0 4px var(--brand-primary);
+    border-radius: 4px;
+  }
+
+  /* Selection */
+  ::selection {
+    background: var(--brand-primary);
+    color: var(--surface-base);
+  }
 }

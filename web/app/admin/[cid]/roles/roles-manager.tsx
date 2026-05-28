@@ -37,7 +37,7 @@ export default function RolesManager({
   }
 
   async function deleteRole(id: string) {
-    if (!confirm('Delete this role? Existing grants will be removed (soft-deleted, audit-preserved).')) return;
+    if (!confirm('Delete this role? Existing grants are removed; audit preserved.')) return;
     const res = await fetch(`/api/v1/communities/${communityId}/roles/${id}`, {
       method: 'DELETE',
       credentials: 'include',
@@ -51,72 +51,88 @@ export default function RolesManager({
 
   return (
     <div className="space-y-4">
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? (
+        <p className="text-sm text-danger border-l-2 border-danger pl-3 py-1">
+          {error}
+        </p>
+      ) : null}
 
       {creating ? (
-        <RoleForm
-          mode="create"
-          communityId={communityId}
-          permissions={permissions}
-          onDone={async () => {
-            setCreating(false);
-            await refresh();
-          }}
-          onCancel={() => setCreating(false)}
-        />
+        <div className="border border-line rounded-sm p-4">
+          <RoleForm
+            mode="create"
+            communityId={communityId}
+            permissions={permissions}
+            onDone={async () => {
+              setCreating(false);
+              await refresh();
+            }}
+            onCancel={() => setCreating(false)}
+          />
+        </div>
       ) : (
         <button
           onClick={() => setCreating(true)}
-          className="px-3 py-2 rounded text-sm text-white"
+          className="text-sm font-medium text-white rounded px-3 py-1.5"
           style={{ background: 'var(--brand-primary)' }}
         >
           + New custom role
         </button>
       )}
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         {roles.map((role) => (
-          <div key={role.id} className="border border-gray-200 rounded p-4">
+          <div key={role.id} className="border border-line rounded-sm">
             {editing?.id === role.id ? (
-              <RoleForm
-                mode="edit"
-                communityId={communityId}
-                permissions={permissions}
-                initial={role}
-                onDone={async () => {
-                  setEditing(null);
-                  await refresh();
-                }}
-                onCancel={() => setEditing(null)}
-              />
+              <div className="p-4">
+                <RoleForm
+                  mode="edit"
+                  communityId={communityId}
+                  permissions={permissions}
+                  initial={role}
+                  onDone={async () => {
+                    setEditing(null);
+                    await refresh();
+                  }}
+                  onCancel={() => setEditing(null)}
+                />
+              </div>
             ) : (
-              <div className="space-y-2">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h4 className="font-medium">{role.name}</h4>
+              <div className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-baseline gap-2">
+                      <h3 className="font-medium">{role.name}</h3>
+                      {role.templateKey ? (
+                        <span className="text-xs font-mono text-ink-tertiary px-1.5 py-0.5 rounded-full bg-surface-muted">
+                          template:{role.templateKey}
+                        </span>
+                      ) : (
+                        <span
+                          className="text-xs font-medium px-1.5 py-0.5 rounded-full"
+                          style={{
+                            background: 'var(--brand-primary-soft)',
+                            color: 'var(--brand-primary)',
+                          }}
+                        >
+                          custom
+                        </span>
+                      )}
+                    </div>
                     {role.description ? (
-                      <p className="text-xs text-gray-500">{role.description}</p>
+                      <p className="text-xs text-ink-secondary">{role.description}</p>
                     ) : null}
-                    {role.templateKey ? (
-                      <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded bg-gray-100">
-                        from template: {role.templateKey}
-                      </span>
-                    ) : (
-                      <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded bg-amber-100">
-                        custom
-                      </span>
-                    )}
                   </div>
-                  <div className="flex gap-2 text-sm">
+                  <div className="flex gap-3 text-xs shrink-0">
                     <button
                       onClick={() => setEditing(role)}
-                      className="text-blue-600 hover:underline"
+                      className="text-ink-secondary hover:text-ink transition-colors"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => deleteRole(role.id)}
-                      className="text-red-600 hover:underline"
+                      className="text-danger hover:opacity-80 transition-opacity"
                     >
                       Delete
                     </button>
@@ -126,7 +142,7 @@ export default function RolesManager({
                   {role.permissions.map((p) => (
                     <span
                       key={p}
-                      className="text-xs px-2 py-0.5 rounded bg-gray-100 font-mono"
+                      className="font-mono text-xs px-1.5 py-0.5 rounded-full bg-surface-muted text-ink-secondary"
                     >
                       {p}
                     </span>
@@ -158,7 +174,9 @@ function RoleForm({
 }) {
   const [name, setName] = useState(initial?.name ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
-  const [selected, setSelected] = useState<Set<string>>(new Set(initial?.permissions ?? []));
+  const [selected, setSelected] = useState<Set<string>>(
+    new Set(initial?.permissions ?? []),
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -198,52 +216,66 @@ function RoleForm({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium mb-1">Name</label>
+        <label className="block text-xs font-medium text-ink-secondary mb-1.5">
+          Name
+        </label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g. Night Shift Security"
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+          className="w-full border border-line-strong rounded text-sm px-3 py-2 bg-surface"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium mb-1">Description (optional)</label>
+        <label className="block text-xs font-medium text-ink-secondary mb-1.5">
+          Description (optional)
+        </label>
         <input
           value={description ?? ''}
           onChange={(e) => setDescription(e.target.value)}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+          className="w-full border border-line-strong rounded text-sm px-3 py-2 bg-surface"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium mb-2">Permissions</label>
-        <div className="grid sm:grid-cols-2 gap-1">
+        <label className="block text-xs font-medium text-ink-secondary mb-2">
+          Permissions
+        </label>
+        <div className="grid sm:grid-cols-2 gap-1.5">
           {permissions.map((p) => (
-            <label key={p} className="flex items-center gap-2 text-sm font-mono">
+            <label
+              key={p}
+              className="flex items-center gap-2 cursor-pointer hover:bg-surface-muted px-2 py-1 rounded-sm transition-colors"
+            >
               <input
                 type="checkbox"
                 checked={selected.has(p)}
                 onChange={() => toggle(p)}
+                className="rounded-sm"
               />
-              {p}
+              <span className="font-mono text-xs">{p}</span>
             </label>
           ))}
         </div>
       </div>
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? (
+        <p className="text-sm text-danger border-l-2 border-danger pl-3 py-1">
+          {error}
+        </p>
+      ) : null}
       <div className="flex gap-2">
         <button
           onClick={submit}
           disabled={busy || !name}
-          className="px-3 py-1.5 rounded text-sm text-white disabled:opacity-50"
+          className="text-sm font-medium text-white rounded px-3 py-1.5 disabled:opacity-50"
           style={{ background: 'var(--brand-primary)' }}
         >
           {busy ? 'Saving…' : mode === 'create' ? 'Create role' : 'Save'}
         </button>
         <button
           onClick={onCancel}
-          className="px-3 py-1.5 rounded text-sm border border-gray-300"
+          className="text-sm font-medium border border-line-strong rounded px-3 py-1.5 text-ink-secondary hover:text-ink transition-colors"
         >
           Cancel
         </button>

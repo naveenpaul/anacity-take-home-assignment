@@ -14,8 +14,6 @@ type Action = {
   createdAt: string;
 };
 
-// Mirror of action-types.ts on the backend. If we add more action types,
-// keep these in sync.
 const ACTION_TYPE_LABELS: Record<string, string> = {
   visitor_approved: 'Approve visitor',
   maintenance_raised: 'Raise maintenance',
@@ -28,6 +26,13 @@ const ACTION_TYPE_PERMISSION: Record<string, string> = {
   maintenance_raised: 'raise_maintenance',
   notice_created: 'create_notice',
   parking_assigned: 'manage_units',
+};
+
+const ACTION_TYPE_VERB: Record<string, string> = {
+  visitor_approved: 'approved a visitor for',
+  maintenance_raised: 'raised maintenance for',
+  notice_created: 'posted a notice for',
+  parking_assigned: 'assigned parking for',
 };
 
 export default function UnitsBoard({
@@ -47,9 +52,15 @@ export default function UnitsBoard({
   const [busyUnit, setBusyUnit] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const permSet = new Set(myPermissions);
-  const allowedActionTypes = actionTypes.filter((t) => permSet.has(ACTION_TYPE_PERMISSION[t] ?? ''));
+  const allowedActionTypes = actionTypes.filter(
+    (t) => permSet.has(ACTION_TYPE_PERMISSION[t] ?? ''),
+  );
 
-  async function recordAction(unit: Unit, actionType: string, metadata: Record<string, unknown>) {
+  async function recordAction(
+    unit: Unit,
+    actionType: string,
+    metadata: Record<string, unknown>,
+  ) {
     setBusyUnit(unit.id);
     setError(null);
     const res = await fetch(
@@ -67,7 +78,6 @@ export default function UnitsBoard({
       setError(data.message ?? 'Action failed');
       return;
     }
-    // Refetch the feed.
     const feedRes = await fetch(`/api/v1/communities/${communityId}/actions?limit=25`, {
       credentials: 'include',
     });
@@ -75,27 +85,34 @@ export default function UnitsBoard({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
-      <div className="space-y-6">
+    <div className="grid gap-8 lg:grid-cols-[1fr_22rem]">
+      <div className="space-y-8">
         {error ? (
-          <div className="text-sm text-red-600 border border-red-200 rounded p-2">
+          <div className="text-sm text-danger border-l-2 border-danger pl-3 py-2">
             {error}
           </div>
         ) : null}
 
         {allowedActionTypes.length === 0 ? (
-          <div className="text-sm text-gray-600 border border-gray-200 rounded p-3">
-            You have no action permissions in this community. Ask an admin to
-            grant you one — try the Resident, Security, or Manager role.
+          <div className="border border-line rounded-sm p-4">
+            <p className="text-sm text-ink-secondary">
+              You have no action permissions in this community. Ask an admin
+              to grant you a role.
+            </p>
           </div>
         ) : null}
 
         {blocks.map(({ block, units }) => (
-          <section key={block.id}>
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-2">
-              {block.name}
-            </h3>
-            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-2">
+          <section key={block.id} className="space-y-3">
+            <div className="flex items-baseline justify-between">
+              <h3 className="text-xs uppercase tracking-wider font-medium text-ink-tertiary">
+                {block.name}
+              </h3>
+              <span className="font-mono text-xs text-ink-tertiary">
+                {units.length} units
+              </span>
+            </div>
+            <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-2">
               {units.map((u) => (
                 <UnitCard
                   key={u.id}
@@ -111,28 +128,35 @@ export default function UnitsBoard({
       </div>
 
       <aside className="lg:sticky lg:top-4 self-start">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-2">
-          Recent activity ({actions.length})
-        </h3>
-        <div className="border border-gray-200 rounded divide-y max-h-[28rem] overflow-y-auto">
+        <div className="flex items-baseline justify-between mb-3">
+          <h3 className="text-xs uppercase tracking-wider font-medium text-ink-tertiary">
+            Recent activity
+          </h3>
+          <span className="font-mono text-xs text-ink-tertiary">
+            {actions.length}
+          </span>
+        </div>
+        <div className="border border-line rounded-sm divide-y divide-line max-h-[32rem] overflow-y-auto">
           {actions.length === 0 ? (
-            <div className="p-3 text-sm text-gray-500">No actions yet.</div>
+            <div className="p-4 text-sm text-ink-tertiary italic">
+              No actions yet. Record one to see it appear here.
+            </div>
           ) : (
             actions.map((a) => (
-              <div key={a.id} className="p-3 text-sm">
-                <p>
+              <div key={a.id} className="p-3 space-y-1">
+                <p className="text-sm">
                   <span className="font-medium">{a.actor.name}</span>{' '}
-                  <span className="text-gray-600">
-                    {ACTION_TYPE_LABELS[a.actionType] ?? a.actionType}
+                  <span className="text-ink-secondary">
+                    {ACTION_TYPE_VERB[a.actionType] ?? a.actionType}
                   </span>{' '}
-                  on <span className="font-mono">{a.unitLabel}</span>
+                  <span className="font-mono font-medium">{a.unitLabel}</span>
                 </p>
                 {Object.keys(a.metadata).length > 0 ? (
-                  <p className="text-xs text-gray-500 mt-1 font-mono">
+                  <p className="text-xs text-ink-secondary font-mono">
                     {JSON.stringify(a.metadata)}
                   </p>
                 ) : null}
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs font-mono text-ink-tertiary">
                   {new Date(a.createdAt).toLocaleString()}
                 </p>
               </div>
@@ -168,24 +192,25 @@ function UnitCard({
   }
 
   return (
-    <div className="border border-gray-200 rounded p-3 space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="font-mono font-medium">{unit.label}</span>
+    <div className="border border-line rounded-sm hover:border-line-strong transition-colors">
+      <div className="px-3 py-2 flex items-center justify-between">
+        <span className="font-mono text-sm font-medium">{unit.label}</span>
         {allowedActionTypes.length > 0 ? (
           <button
             onClick={() => setOpen((o) => !o)}
-            className="text-xs text-blue-600 hover:underline"
+            className="text-xs hover:underline"
+            style={{ color: 'var(--brand-primary)' }}
           >
             {open ? 'Cancel' : '+ Action'}
           </button>
         ) : null}
       </div>
       {open ? (
-        <div className="space-y-2">
+        <div className="border-t border-line p-3 space-y-2">
           <select
             value={actionType}
             onChange={(e) => setActionType(e.target.value)}
-            className="w-full border border-gray-300 rounded px-2 py-1 text-xs"
+            className="w-full border border-line-strong rounded text-xs px-2 py-1 bg-surface"
           >
             {allowedActionTypes.map((t) => (
               <option key={t} value={t}>
@@ -198,12 +223,12 @@ function UnitCard({
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Note (optional)"
-            className="w-full border border-gray-300 rounded px-2 py-1 text-xs"
+            className="w-full border border-line-strong rounded text-xs px-2 py-1 bg-surface"
           />
           <button
             onClick={submit}
             disabled={busy}
-            className="w-full px-2 py-1 rounded text-xs text-white disabled:opacity-50"
+            className="w-full text-xs font-medium text-white rounded py-1.5 disabled:opacity-50"
             style={{ background: 'var(--brand-primary)' }}
           >
             {busy ? 'Recording…' : 'Record'}

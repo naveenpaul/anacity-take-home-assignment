@@ -34,50 +34,79 @@ export default async function CommunityPage({ params }: { params: { cid: string 
   if (!units || !myCtx || !recent || !actionTypes) {
     return (
       <div className="space-y-4">
-        <h2 className="text-2xl font-semibold">Failed to load community</h2>
-        <Link href="/home" className="text-blue-600 hover:underline">
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Failed to load community
+        </h1>
+        <Link href="/home" className="text-sm hover:underline" style={{ color: 'var(--brand-primary)' }}>
           ← Back to home
         </Link>
       </div>
     );
   }
 
-  // Group units by block.
   const byBlock = new Map<string, { block: Block; units: Unit[] }>();
   for (const u of units) {
     const entry = byBlock.get(u.block.id) ?? { block: u.block, units: [] };
     entry.units.push(u);
     byBlock.set(u.block.id, entry);
   }
-  const blocks = Array.from(byBlock.values()).sort((a, b) => a.block.name.localeCompare(b.block.name));
+  const blocks = Array.from(byBlock.values()).sort((a, b) =>
+    a.block.name.localeCompare(b.block.name),
+  );
 
   const isAdmin = membership.roles.some((r) => r.role.templateKey === 'admin');
 
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-sm text-gray-500">
-          <Link href="/home" className="hover:underline">
-            ← Home
+    <div className="space-y-8">
+      <div className="space-y-3">
+        <nav className="flex items-center gap-2 text-xs text-ink-tertiary">
+          <Link href="/home" className="hover:text-ink transition-colors">
+            Home
           </Link>
+          <span>/</span>
+          <span className="text-ink-secondary">{membership.community.name}</span>
           {isAdmin ? (
             <>
-              {' · '}
-              <Link href={`/admin/${params.cid}/roles`} className="hover:underline">
+              <span className="ml-auto" />
+              <Link
+                href={`/admin/${params.cid}/roles`}
+                className="hover:text-ink transition-colors"
+              >
                 Manage roles
               </Link>
-              {' · '}
-              <Link href={`/admin/${params.cid}/memberships`} className="hover:underline">
-                Manage memberships
+              <span>·</span>
+              <Link
+                href={`/admin/${params.cid}/memberships`}
+                className="hover:text-ink transition-colors"
+              >
+                Memberships
               </Link>
             </>
           ) : null}
-        </p>
-        <h2 className="text-2xl font-semibold mt-2">{membership.community.name}</h2>
-        <p className="text-sm text-gray-500">
-          {membership.roles.map((r) => r.role.name).join(', ')} ·{' '}
-          {myCtx.permissions.length} permission(s) here
-        </p>
+        </nav>
+        <div className="flex items-baseline gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {membership.community.name}
+          </h1>
+        </div>
+        <div className="flex items-center gap-3 text-xs">
+          <span className="text-ink-secondary">Your roles:</span>
+          {membership.roles.map((r) => (
+            <span
+              key={r.membershipRoleId}
+              className="px-2 py-0.5 rounded-full font-medium"
+              style={{
+                background: 'var(--brand-primary-soft)',
+                color: 'var(--brand-primary)',
+              }}
+            >
+              {r.role.name}
+            </span>
+          ))}
+          <span className="text-ink-tertiary">
+            · <span className="font-mono">{myCtx.permissions.length}</span> permission(s) here
+          </span>
+        </div>
       </div>
 
       <UnitsBoard

@@ -29,11 +29,12 @@ export default async function RolesAdminPage({ params }: { params: { cid: string
   if (!roles || !permissions) {
     return (
       <div className="space-y-4">
-        <h2 className="text-2xl font-semibold">Permission denied</h2>
-        <p className="text-sm text-gray-600">
-          You don&apos;t have <code>assign_roles</code> in this community.
+        <h1 className="text-2xl font-semibold tracking-tight">Permission denied</h1>
+        <p className="text-sm text-ink-secondary">
+          You don't have <code className="font-mono">assign_roles</code> in this
+          community.
         </p>
-        <Link href="/home" className="text-blue-600 hover:underline">
+        <Link href="/home" className="text-sm hover:underline" style={{ color: 'var(--brand-primary)' }}>
           ← Back to home
         </Link>
       </div>
@@ -41,17 +42,27 @@ export default async function RolesAdminPage({ params }: { params: { cid: string
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-sm text-gray-500">
-          <Link href="/home" className="hover:underline">
-            ← Home
+    <div className="space-y-8">
+      <div className="space-y-3">
+        <nav className="flex items-center gap-2 text-xs text-ink-tertiary">
+          <Link href="/home" className="hover:text-ink transition-colors">
+            Home
           </Link>
-        </p>
-        <h2 className="text-2xl font-semibold mt-2">Roles · {membership.community.name}</h2>
-        <p className="text-sm text-gray-500">
-          Create custom roles, edit permissions, or remove. Changes take effect on
-          the next request — no deployment.
+          <span>/</span>
+          <Link
+            href={`/c/${params.cid}`}
+            className="hover:text-ink transition-colors"
+          >
+            {membership.community.name}
+          </Link>
+          <span>/</span>
+          <span className="text-ink-secondary">Roles</span>
+        </nav>
+        <h1 className="text-2xl font-semibold tracking-tight">Roles</h1>
+        <p className="text-sm text-ink-secondary max-w-xl">
+          Create custom roles or edit instantiated ones. Permissions are flat
+          keys — changes take effect on the granted user's next request, no
+          deployment.
         </p>
       </div>
 
@@ -61,9 +72,16 @@ export default async function RolesAdminPage({ params }: { params: { cid: string
         permissions={permissions.map((p) => p.key)}
       />
 
-      <p className="text-sm text-gray-500 pt-4 border-t">
-        Next: <Link href={`/admin/${params.cid}/memberships`} className="text-blue-600 hover:underline">manage memberships</Link>{' '}
-        to assign these roles to users.
+      <p className="text-xs text-ink-tertiary border-t border-line pt-4">
+        Next:{' '}
+        <Link
+          href={`/admin/${params.cid}/memberships`}
+          className="hover:underline"
+          style={{ color: 'var(--brand-primary)' }}
+        >
+          assign these roles to users
+        </Link>
+        .
       </p>
     </div>
   );
