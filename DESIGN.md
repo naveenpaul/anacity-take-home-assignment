@@ -289,16 +289,22 @@ loading skeletons that "shimmer" with gradient sweeps.
 
 ## 10. Mode switching
 
-Both modes are designed surfaces, not the same surface tinted. Specifically:
+**Light mode is the only shipping mode in the POC.** Admin tools are
+read for hours; the default should be predictable and not flip out
+from under the user when their OS theme changes. `prefers-color-scheme`
+is intentionally NOT respected.
+
+The dark-mode token values in §5 are defined for the day a manual
+toggle ships (likely user-preference column on `User` + a header
+control). When that lands:
 - Dark mode reduces saturation on semantic colors by ~15% to avoid
   vibrating reds and greens on dark backgrounds.
-- Hairline borders are *visible* in both modes (they're 1px against a
-  surface that contrasts enough to see them).
-- The tenant accent stays the same hex in both modes — let the
-  surrounding neutrals do the work.
+- Hairline borders stay visible in both modes (1px against a contrasting
+  surface).
+- The tenant accent stays the same hex in both modes — surrounding
+  neutrals do the work.
 
-Default mode: **light** (admin tools are read for hours; dark mode is
-opt-in by user preference and respected via `prefers-color-scheme`).
+Default mode: **light**. Dark mode: deferred (opt-in toggle, not OS-driven).
 
 ---
 

@@ -29,22 +29,10 @@
     --info: #2563eb;
   }
 
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --surface-base: #0a0a0a;
-      --surface-raised: #171717;
-      --surface-muted: #262626;
-      --text-primary: #fafafa;
-      --text-secondary: #a3a3a3;
-      --text-tertiary: #525252;
-      --border-default: #262626;
-      --border-strong: #404040;
-      --success: #22c55e;
-      --warning: #f59e0b;
-      --danger: #ef4444;
-      --info: #3b82f6;
-    }
-  }
+  /* Dark mode tokens live in DESIGN.md §5 but are NOT auto-applied via
+     prefers-color-scheme — admin tools are read for hours and the
+     default should be predictable. Dark mode comes back as an opt-in
+     toggle in a follow-up; for now light is the only shipping mode. */
 
   html {
     background: var(--surface-base);
