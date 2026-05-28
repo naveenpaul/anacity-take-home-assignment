@@ -2,11 +2,25 @@ import { Controller, ForbiddenException, Get, Param, UseGuards } from '@nestjs/c
 import { JwtCookieGuard } from '../auth/jwt-cookie.guard';
 import { CurrentUser, type AuthedUser } from '../auth/current-user.decorator';
 import { PrismaService } from '../prisma/prisma.service';
+import { AbilityService } from '../rbac/ability.service';
 
 @Controller('communities')
 @UseGuards(JwtCookieGuard)
 export class CommunitiesController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly ability: AbilityService,
+  ) {}
+
+  @Get(':communityId/me')
+  async myContext(@Param('communityId') communityId: string, @CurrentUser() user: AuthedUser) {
+    const ability = await this.ability.resolve(user.id, communityId);
+    return {
+      userId: user.id,
+      communityId,
+      permissions: ability.permissions(),
+    };
+  }
 
   /**
    * Lightweight listings used by admin UIs (e.g. block scope picker on the

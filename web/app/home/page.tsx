@@ -67,30 +67,44 @@ export default async function HomePage() {
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="font-medium">{m.community.name}</h4>
+                      <Link
+                        href={`/c/${m.community.id}`}
+                        className="font-medium hover:underline"
+                      >
+                        {m.community.name}
+                      </Link>
                       <p className="text-xs text-gray-500">{m.community.tenant.name}</p>
                     </div>
                     <span className="text-xs px-2 py-0.5 rounded bg-gray-100">
                       {m.roles.map((r) => r.role.name).join(', ') || 'No role'}
                     </span>
                   </div>
-                  {isAdmin ? (
-                    <div className="flex gap-2 pt-2 text-sm">
-                      <Link
-                        href={`/admin/${m.community.id}/roles`}
-                        className="text-blue-600 hover:underline"
-                      >
-                        Manage roles
-                      </Link>
-                      <span className="text-gray-300">·</span>
-                      <Link
-                        href={`/admin/${m.community.id}/memberships`}
-                        className="text-blue-600 hover:underline"
-                      >
-                        Manage memberships
-                      </Link>
-                    </div>
-                  ) : null}
+                  <div className="flex gap-2 pt-2 text-sm">
+                    <Link
+                      href={`/c/${m.community.id}`}
+                      className="text-blue-600 hover:underline"
+                    >
+                      Open dashboard →
+                    </Link>
+                    {isAdmin ? (
+                      <>
+                        <span className="text-gray-300">·</span>
+                        <Link
+                          href={`/admin/${m.community.id}/roles`}
+                          className="text-blue-600 hover:underline"
+                        >
+                          Roles
+                        </Link>
+                        <span className="text-gray-300">·</span>
+                        <Link
+                          href={`/admin/${m.community.id}/memberships`}
+                          className="text-blue-600 hover:underline"
+                        >
+                          Memberships
+                        </Link>
+                      </>
+                    ) : null}
+                  </div>
                 </div>
               );
             })}
