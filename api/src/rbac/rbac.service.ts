@@ -92,6 +92,105 @@ export class RbacService {
     return { id: roleId, tenantId: role.tenantId, deleted: true };
   }
 
+  /**
+   * Tenant users who are NOT yet community-scoped members of this
+   * community. Includes users with only a tenant-wide membership
+   * (because we still want admins to be able to give them an
+   * explicit community-scoped role with block/unit scope on top).
+   * Excludes users with no membership anywhere in this tenant —
+   * cross-tenant identity is preserved, but the admin UI only
+   * surfaces people who already belong to *some* community in the
+   * same tenant.
+   */
+  async listEligibleUsersForCommunity(communityId: string) {
+    const community = await this.prisma.community.findUnique({
+      where: { id: communityId },
+      select: { tenantId: true },
+    });
+    if (!community) throw new NotFoundException('Community not found');
+
+    // Anyone with any active membership in this tenant.
+    const candidates = await this.prisma.user.findMany({
+      where: {
+        memberships: {
+          some: {
+            tenantId: community.tenantId,
+            deletedAt: null,
+            status: 'active',
+          },
+        },
+      },
+      select: { id: true, email: true, name: true },
+      orderBy: { name: 'asc' },
+    });
+
+    // Exclude users who already have a community-scoped membership here.
+    const existing = await this.prisma.membership.findMany({
+      where: { communityId, deletedAt: null },
+      select: { userId: true },
+    });
+    const blocked = new Set(existing.map((m) => m.userId));
+    return candidates.filter((u) => !blocked.has(u.id));
+  }
+
+  async createMembership(input: {
+    userId: string;
+    communityId: string;
+    initialRoleId?: string | null;
+    initialBlockId?: string | null;
+    grantedById: string;
+  }) {
+    const community = await this.prisma.community.findUnique({
+      where: { id: input.communityId },
+      select: { tenantId: true },
+    });
+    if (!community) throw new NotFoundException('Community not found');
+
+    const user = await this.prisma.user.findUnique({ where: { id: input.userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const dup = await this.prisma.membership.findFirst({
+      where: { userId: input.userId, communityId: input.communityId, deletedAt: null },
+      select: { id: true },
+    });
+    if (dup) throw new BadRequestException('User already a member of this community');
+
+    if (input.initialRoleId) {
+      const role = await this.prisma.role.findUnique({ where: { id: input.initialRoleId } });
+      if (!role || role.deletedAt) throw new NotFoundException('Role not found');
+      if (role.communityId !== input.communityId) {
+        throw new BadRequestException('Role does not belong to this community');
+      }
+    }
+    if (input.initialBlockId) {
+      const block = await this.prisma.block.findUnique({ where: { id: input.initialBlockId } });
+      if (!block || block.communityId !== input.communityId) {
+        throw new BadRequestException('Block not in this community');
+      }
+    }
+
+    const membership = await this.prisma.membership.create({
+      data: {
+        userId: input.userId,
+        tenantId: community.tenantId,
+        communityId: input.communityId,
+        status: 'active',
+        ...(input.initialRoleId
+          ? {
+              membershipRoles: {
+                create: {
+                  roleId: input.initialRoleId,
+                  blockId: input.initialBlockId ?? null,
+                  grantedById: input.grantedById,
+                },
+              },
+            }
+          : {}),
+      },
+    });
+    return { ...membership, tenantId: community.tenantId };
+  }
+
   async listMembershipsInCommunity(communityId: string) {
     const memberships = await this.prisma.membership.findMany({
       where: { communityId, deletedAt: null },

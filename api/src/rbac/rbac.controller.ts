@@ -51,6 +51,19 @@ class GrantRoleDto {
   unitId?: string;
 }
 
+class CreateMembershipDto {
+  @IsUUID()
+  userId!: string;
+
+  @IsOptional()
+  @IsUUID()
+  initialRoleId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  initialBlockId?: string;
+}
+
 @Controller()
 @UseGuards(JwtCookieGuard, PermissionsGuard)
 @UseInterceptors(RbacAuditInterceptor)
@@ -130,6 +143,29 @@ export class RbacController {
   @RequirePermissions('assign_roles')
   listMemberships(@Param('communityId') communityId: string) {
     return this.rbac.listMembershipsInCommunity(communityId);
+  }
+
+  @Get('communities/:communityId/eligible-users')
+  @RequirePermissions('assign_roles')
+  listEligibleUsers(@Param('communityId') communityId: string) {
+    return this.rbac.listEligibleUsersForCommunity(communityId);
+  }
+
+  @Post('communities/:communityId/memberships')
+  @RequirePermissions('assign_roles')
+  @Audit({ entity: 'Membership', action: 'create' })
+  createMembership(
+    @Param('communityId') communityId: string,
+    @Body() dto: CreateMembershipDto,
+    @CurrentUser() current: AuthedUser,
+  ) {
+    return this.rbac.createMembership({
+      userId: dto.userId,
+      communityId,
+      initialRoleId: dto.initialRoleId ?? null,
+      initialBlockId: dto.initialBlockId ?? null,
+      grantedById: current.id,
+    });
   }
 
   @Post('communities/:communityId/memberships/:mid/roles')

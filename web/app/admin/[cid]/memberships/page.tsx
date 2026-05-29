@@ -6,6 +6,7 @@ import MembershipsManager from './memberships-manager';
 
 type Role = { id: string; name: string; templateKey: string | null };
 type Block = { id: string; name: string };
+type EligibleUser = { id: string; name: string; email: string };
 
 type Membership = {
   id: string;
@@ -31,10 +32,11 @@ export default async function MembershipsAdminPage({
   const membership = effectiveMemberships(me).find((m) => m.community.id === params.cid);
   if (!membership) notFound();
 
-  const [memberships, roles, blocks] = await Promise.all([
+  const [memberships, roles, blocks, eligibleUsers] = await Promise.all([
     apiGet<Membership[]>(`/communities/${params.cid}/memberships`),
     apiGet<Array<Role & { permissions: string[] }>>(`/communities/${params.cid}/roles`),
     apiGet<Block[]>(`/communities/${params.cid}/blocks`).catch(() => null),
+    apiGet<EligibleUser[]>(`/communities/${params.cid}/eligible-users`).catch(() => null),
   ]);
 
   if (!memberships || !roles) {
@@ -92,6 +94,7 @@ export default async function MembershipsAdminPage({
         initialMemberships={memberships}
         roles={roles}
         blocks={blocks ?? []}
+        initialEligibleUsers={eligibleUsers ?? []}
       />
     </div>
   );
