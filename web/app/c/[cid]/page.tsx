@@ -6,7 +6,12 @@ import UnitsBoard from './units-board';
 
 type Block = { id: string; name: string };
 type Unit = { id: string; label: string; block: { id: string; name: string } };
-type MyContext = { permissions: string[] };
+type ScopedGrant = {
+  permission: string;
+  blockId: string | null;
+  unitId: string | null;
+};
+type MyContext = { permissions: string[]; grants: ScopedGrant[] };
 type Action = {
   id: string;
   unitId: string;
@@ -114,6 +119,7 @@ export default async function CommunityPage({ params }: { params: { cid: string 
         blocks={blocks}
         actionTypes={actionTypes}
         myPermissions={myCtx.permissions}
+        myGrants={myCtx.grants}
         initialActions={recent}
       />
     </div>

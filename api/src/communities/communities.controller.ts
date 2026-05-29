@@ -19,6 +19,7 @@ export class CommunitiesController {
       userId: user.id,
       communityId,
       permissions: ability.permissions(),
+      grants: ability.scopedGrants(),
     };
   }
 

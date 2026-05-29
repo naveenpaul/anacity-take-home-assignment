@@ -47,7 +47,7 @@ export class ActionsController {
     @Query('limit') limit?: string,
   ) {
     await this.assertMember(user.id, communityId);
-    return this.actions.listForUnit(unitId, limit ? Number(limit) : 50);
+    return this.actions.listForUnit(communityId, unitId, limit ? Number(limit) : 50);
   }
 
   @Post('units/:unitId/actions')

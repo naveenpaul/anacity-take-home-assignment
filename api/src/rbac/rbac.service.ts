@@ -52,9 +52,12 @@ export class RbacService {
     return this.shapeRole(role);
   }
 
-  async updateRole(roleId: string, input: { name?: string; description?: string; permissions?: string[] }) {
+  async updateRole(communityId: string, roleId: string, input: { name?: string; description?: string; permissions?: string[] }) {
     const role = await this.prisma.role.findUnique({ where: { id: roleId } });
     if (!role || role.deletedAt) throw new NotFoundException('Role not found');
+    if (role.communityId !== communityId) {
+      throw new BadRequestException('Role does not belong to this community');
+    }
 
     await this.prisma.role.update({
       where: { id: roleId },
@@ -85,9 +88,12 @@ export class RbacService {
     return this.shapeRole(updated!);
   }
 
-  async deleteRole(roleId: string) {
+  async deleteRole(communityId: string, roleId: string) {
     const role = await this.prisma.role.findUnique({ where: { id: roleId } });
     if (!role || role.deletedAt) throw new NotFoundException('Role not found');
+    if (role.communityId !== communityId) {
+      throw new BadRequestException('Role does not belong to this community');
+    }
     await this.prisma.role.update({ where: { id: roleId }, data: { deletedAt: new Date() } });
     return { id: roleId, tenantId: role.tenantId, deleted: true };
   }
@@ -221,6 +227,7 @@ export class RbacService {
   }
 
   async grantRole(input: {
+    communityId: string;
     membershipId: string;
     roleId: string;
     blockId?: string | null;
@@ -231,6 +238,12 @@ export class RbacService {
     if (!role || role.deletedAt) throw new NotFoundException('Role not found');
     const membership = await this.prisma.membership.findUnique({ where: { id: input.membershipId } });
     if (!membership || membership.deletedAt) throw new NotFoundException('Membership not found');
+    if (membership.communityId !== input.communityId) {
+      throw new BadRequestException('Membership does not belong to this community');
+    }
+    if (role.communityId !== input.communityId) {
+      throw new BadRequestException('Role does not belong to this community');
+    }
     if (role.communityId !== membership.communityId) {
       throw new BadRequestException('Role and membership belong to different communities');
     }
@@ -261,12 +274,21 @@ export class RbacService {
     return { ...mr, tenantId: role.tenantId };
   }
 
-  async revokeRole(membershipRoleId: string) {
+  async revokeRole(communityId: string, membershipId: string, membershipRoleId: string) {
     const mr = await this.prisma.membershipRole.findUnique({
       where: { id: membershipRoleId },
-      include: { role: { select: { tenantId: true } } },
+      include: {
+        membership: { select: { id: true, communityId: true } },
+        role: { select: { tenantId: true, communityId: true } },
+      },
     });
     if (!mr) throw new NotFoundException('Grant not found');
+    if (mr.membership.id !== membershipId) {
+      throw new BadRequestException('Grant does not belong to this membership');
+    }
+    if (mr.membership.communityId !== communityId || mr.role.communityId !== communityId) {
+      throw new BadRequestException('Grant does not belong to this community');
+    }
     await this.prisma.membershipRole.delete({ where: { id: membershipRoleId } });
     return { id: membershipRoleId, tenantId: mr.role.tenantId, deleted: true };
   }

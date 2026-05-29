@@ -52,6 +52,10 @@ export class UserAbility {
   permissions(): string[] {
     return Array.from(new Set(this.grants.map((g) => g.permission))).sort();
   }
+
+  scopedGrants(): ScopedGrant[] {
+    return this.grants.map((g) => ({ ...g }));
+  }
 }
 
 @Injectable()

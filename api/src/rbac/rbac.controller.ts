@@ -121,8 +121,12 @@ export class RbacController {
         : null;
     },
   })
-  updateRole(@Param('rid') rid: string, @Body() dto: UpdateRoleDto) {
-    return this.rbac.updateRole(rid, dto);
+  updateRole(
+    @Param('communityId') communityId: string,
+    @Param('rid') rid: string,
+    @Body() dto: UpdateRoleDto,
+  ) {
+    return this.rbac.updateRole(communityId, rid, dto);
   }
 
   @Delete('communities/:communityId/roles/:rid')
@@ -134,8 +138,8 @@ export class RbacController {
       return prisma.role.findUnique({ where: { id: params['rid'] ?? '' } });
     },
   })
-  deleteRole(@Param('rid') rid: string) {
-    return this.rbac.deleteRole(rid);
+  deleteRole(@Param('communityId') communityId: string, @Param('rid') rid: string) {
+    return this.rbac.deleteRole(communityId, rid);
   }
 
   // ---------- Memberships + role grants ----------
@@ -172,11 +176,13 @@ export class RbacController {
   @RequirePermissions('assign_roles')
   @Audit({ entity: 'MembershipRole', action: 'create' })
   grantRole(
+    @Param('communityId') communityId: string,
     @Param('mid') membershipId: string,
     @Body() dto: GrantRoleDto,
     @CurrentUser() current: AuthedUser,
   ) {
     return this.rbac.grantRole({
+      communityId,
       membershipId,
       roleId: dto.roleId,
       blockId: dto.blockId ?? null,
@@ -194,7 +200,11 @@ export class RbacController {
       return prisma.membershipRole.findUnique({ where: { id: params['mrid'] ?? '' } });
     },
   })
-  revokeRole(@Param('mrid') mrid: string) {
-    return this.rbac.revokeRole(mrid);
+  revokeRole(
+    @Param('communityId') communityId: string,
+    @Param('mid') membershipId: string,
+    @Param('mrid') mrid: string,
+  ) {
+    return this.rbac.revokeRole(communityId, membershipId, mrid);
   }
 }

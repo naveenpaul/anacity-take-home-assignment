@@ -30,6 +30,19 @@ describe('isolation: UnitAction hierarchy validation', () => {
     expect(res.body.message).toMatch(/not belong/i);
   });
 
+  it('reading a Falcon unit_id under the Lakeside :communityId rejects with 400', async () => {
+    const cookie = await login(app, 'alice@prestige.dev');
+    const lakeside = await findCommunityIdByName(prisma, 'Lakeside');
+    const falcon = await findCommunityIdByName(prisma, 'Falcon');
+    const falconUnit = await prisma.unit.findFirst({ where: { block: { communityId: falcon } } });
+
+    const res = await request(app.getHttpServer())
+      .get(`/v1/communities/${lakeside}/units/${falconUnit!.id}/actions`)
+      .set('Cookie', cookie);
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/not belong/i);
+  });
+
   it('an unknown action_type is rejected with 400', async () => {
     const cookie = await login(app, 'alice@prestige.dev');
     const lakeside = await findCommunityIdByName(prisma, 'Lakeside');

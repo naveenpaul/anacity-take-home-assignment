@@ -13,6 +13,11 @@ type Action = {
   actor: { id: string; name: string; email: string };
   createdAt: string;
 };
+type ScopedGrant = {
+  permission: string;
+  blockId: string | null;
+  unitId: string | null;
+};
 
 const ACTION_TYPE_LABELS: Record<string, string> = {
   visitor_approved: 'Approve visitor',
@@ -40,12 +45,14 @@ export default function UnitsBoard({
   blocks,
   actionTypes,
   myPermissions,
+  myGrants,
   initialActions,
 }: {
   communityId: string;
   blocks: Array<{ block: Block; units: Unit[] }>;
   actionTypes: string[];
   myPermissions: string[];
+  myGrants: ScopedGrant[];
   initialActions: Action[];
 }) {
   const [actions, setActions] = useState(initialActions);
@@ -53,9 +60,22 @@ export default function UnitsBoard({
   const [error, setError] = useState<string | null>(null);
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
   const permSet = new Set(myPermissions);
-  const allowedActionTypes = actionTypes.filter(
-    (t) => permSet.has(ACTION_TYPE_PERMISSION[t] ?? ''),
+  const availableActionTypes = actionTypes.filter((t) =>
+    permSet.has(ACTION_TYPE_PERMISSION[t] ?? ''),
   );
+
+  function allowedActionTypesForUnit(unit: Unit) {
+    return availableActionTypes.filter((t) => {
+      const permission = ACTION_TYPE_PERMISSION[t];
+      if (!permission) return false;
+      return myGrants.some((grant) => {
+        if (grant.permission !== permission) return false;
+        const blockOk = !grant.blockId || grant.blockId === unit.block.id;
+        const unitOk = !grant.unitId || grant.unitId === unit.id;
+        return blockOk && unitOk;
+      });
+    });
+  }
 
   async function recordAction(
     unit: Unit,
@@ -95,7 +115,7 @@ export default function UnitsBoard({
           </div>
         ) : null}
 
-        {allowedActionTypes.length === 0 ? (
+        {availableActionTypes.length === 0 ? (
           <div className="border border-line rounded-sm p-4">
             <p className="text-sm text-ink-secondary">
               You have no action permissions in this community. Ask an admin
@@ -120,7 +140,7 @@ export default function UnitsBoard({
                   key={u.id}
                   unit={u}
                   selected={selectedUnit?.id === u.id}
-                  canAct={allowedActionTypes.length > 0}
+                  canAct={allowedActionTypesForUnit(u).length > 0}
                   onSelect={() => setSelectedUnit(u)}
                 />
               ))}
@@ -172,7 +192,7 @@ export default function UnitsBoard({
           // Key reset clears action-type/note state when switching units.
           key={selectedUnit.id}
           unit={selectedUnit}
-          allowedActionTypes={allowedActionTypes}
+          allowedActionTypes={allowedActionTypesForUnit(selectedUnit)}
           recentForUnit={actions.filter((a) => a.unitId === selectedUnit.id)}
           busy={busyUnit === selectedUnit.id}
           onSubmit={async (actionType, metadata) => {

@@ -67,9 +67,18 @@ export class ActionsService {
     });
   }
 
-  async listForUnit(unitId: string, limit = 50) {
+  async listForUnit(communityId: string, unitId: string, limit = 50) {
+    const unit = await this.prisma.unit.findUnique({
+      where: { id: unitId },
+      select: { block: { select: { communityId: true } } },
+    });
+    if (!unit) throw new NotFoundException('Unit not found');
+    if (unit.block.communityId !== communityId) {
+      throw new BadRequestException('Unit does not belong to this community');
+    }
+
     return this.prisma.unitAction.findMany({
-      where: { unitId },
+      where: { communityId, unitId },
       orderBy: { createdAt: 'desc' },
       take: limit,
       include: { actor: { select: { id: true, name: true, email: true } } },
