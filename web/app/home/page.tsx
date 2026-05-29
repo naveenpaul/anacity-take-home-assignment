@@ -1,12 +1,36 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { apiGet } from '../lib/api';
 import { effectiveMemberships, getCurrentUser } from '../lib/auth';
 import { getTenant } from '../tenant';
 import LogoutButton from './logout-button';
 
+type ActivityRow = {
+  id: string;
+  actionType: string;
+  unitLabel: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  actor: { id: string; name: string; email: string };
+  community: { id: string; name: string };
+};
+
+const ACTION_VERB: Record<string, string> = {
+  visitor_approved: 'approved visitor',
+  maintenance_raised: 'raised maintenance',
+  notice_created: 'posted notice',
+  parking_assigned: 'assigned parking',
+};
+
 export default async function HomePage() {
   const [me, tenant] = await Promise.all([getCurrentUser(), getTenant()]);
   if (!me) redirect('/login');
+
+  // Recent activity only makes sense scoped to a tenant subdomain — the
+  // endpoint resolves the tenant from the X-Tenant-Slug header.
+  const activity = tenant
+    ? (await apiGet<ActivityRow[]>('/tenants/me/recent-activity?limit=25')) ?? []
+    : [];
 
   // Effective list = community memberships + synthesized rows for
   // communities covered by a tenant-wide membership.
@@ -166,6 +190,85 @@ export default async function HomePage() {
           </div>
         )}
       </section>
+
+      {tenant && visible.length > 0 ? (
+        <section className="space-y-3">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-sm uppercase tracking-wider font-medium text-ink-tertiary">
+              Recent activity across {tenant.name}
+            </h2>
+            <span className="font-mono text-xs text-ink-tertiary">
+              {activity.length}
+            </span>
+          </div>
+          {activity.length === 0 ? (
+            <div className="border border-line rounded-sm p-4">
+              <p className="text-sm text-ink-secondary">
+                No actions recorded yet. Once members start recording
+                visitor approvals, maintenance, or notices on units, the
+                feed will appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="border border-line rounded-sm overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-surface-muted text-xs uppercase tracking-wider text-ink-tertiary">
+                  <tr>
+                    <th className="text-left font-medium px-3 py-2">When</th>
+                    <th className="text-left font-medium px-3 py-2">Who</th>
+                    <th className="text-left font-medium px-3 py-2">Did</th>
+                    <th className="text-left font-medium px-3 py-2">On</th>
+                    <th className="text-left font-medium px-3 py-2">Community</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {activity.map((a) => {
+                    const note =
+                      typeof a.metadata === 'object' &&
+                      a.metadata !== null &&
+                      typeof (a.metadata as Record<string, unknown>).note === 'string'
+                        ? ((a.metadata as Record<string, unknown>).note as string)
+                        : null;
+                    return (
+                      <tr key={a.id} className="hover:bg-surface-muted/40 transition-colors">
+                        <td className="px-3 py-2 align-top font-mono text-xs text-ink-tertiary whitespace-nowrap">
+                          {new Date(a.createdAt).toLocaleString()}
+                        </td>
+                        <td className="px-3 py-2 align-top">
+                          <div className="font-medium">{a.actor.name}</div>
+                          <div className="font-mono text-xs text-ink-tertiary">
+                            {a.actor.email}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 align-top">
+                          <div>{ACTION_VERB[a.actionType] ?? a.actionType}</div>
+                          {note ? (
+                            <div className="text-xs text-ink-secondary italic">
+                              "{note}"
+                            </div>
+                          ) : null}
+                        </td>
+                        <td className="px-3 py-2 align-top font-mono text-xs">
+                          {a.unitLabel}
+                        </td>
+                        <td className="px-3 py-2 align-top">
+                          <Link
+                            href={`/c/${a.community.id}`}
+                            className="hover:underline"
+                            style={{ color: 'var(--brand-primary)' }}
+                          >
+                            {a.community.name}
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      ) : null}
 
       {otherTenants.length > 0 && visible.length > 0 ? (
         <section className="text-xs text-ink-tertiary border-t border-line pt-6">

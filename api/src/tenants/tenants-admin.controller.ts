@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, ForbiddenException, Get, NotFoundException, Patch, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, NotFoundException, Patch, Query, Req, UseGuards } from '@nestjs/common';
 import { IsHexColor, IsOptional, IsString, MinLength } from 'class-validator';
 import type { Request } from 'express';
 import { JwtCookieGuard } from '../auth/jwt-cookie.guard';
@@ -72,6 +72,67 @@ export class TenantsAdminController {
       name: updated.name,
       branding: updated.branding,
     };
+  }
+
+  /**
+   * Cross-community activity feed for the home page. Returns the most
+   * recent UnitAction rows in this tenant, scoped to communities the
+   * user can see:
+   *   - Tenant-wide membership ⇒ every community in the tenant.
+   *   - Community-scoped memberships only ⇒ just those community IDs.
+   * Returns an empty array (not 403) when the user has access to zero
+   * communities; that's a normal state for someone freshly invited.
+   */
+  @Get('recent-activity')
+  async recentActivity(
+    @Req() req: Request,
+    @CurrentUser() user: AuthedUser,
+    @Query('limit') limit?: string,
+  ) {
+    const tenant = await this.resolveTenantFromHeaders(req);
+    const take = Math.min(Math.max(Number(limit) || 25, 1), 100);
+
+    const memberships = await this.prisma.membership.findMany({
+      where: {
+        userId: user.id,
+        tenantId: tenant.id,
+        deletedAt: null,
+        status: 'active',
+      },
+      select: { communityId: true },
+    });
+    if (memberships.length === 0) return [];
+
+    const isTenantWide = memberships.some((m) => m.communityId === null);
+    const where = isTenantWide
+      ? { tenantId: tenant.id }
+      : {
+          tenantId: tenant.id,
+          communityId: {
+            in: memberships
+              .map((m) => m.communityId)
+              .filter((c): c is string => c !== null),
+          },
+        };
+
+    const actions = await this.prisma.unitAction.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take,
+      include: {
+        actor: { select: { id: true, name: true, email: true } },
+        community: { select: { id: true, name: true } },
+      },
+    });
+    return actions.map((a) => ({
+      id: a.id,
+      actionType: a.actionType,
+      unitLabel: a.unitLabel,
+      metadata: a.metadata,
+      createdAt: a.createdAt,
+      actor: a.actor,
+      community: a.community,
+    }));
   }
 
   /**
