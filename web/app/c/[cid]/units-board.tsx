@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 type Block = { id: string; name: string };
 type Unit = { id: string; label: string; block: { id: string; name: string } };
@@ -51,6 +51,7 @@ export default function UnitsBoard({
   const [actions, setActions] = useState(initialActions);
   const [busyUnit, setBusyUnit] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
   const permSet = new Set(myPermissions);
   const allowedActionTypes = actionTypes.filter(
     (t) => permSet.has(ACTION_TYPE_PERMISSION[t] ?? ''),
@@ -76,12 +77,13 @@ export default function UnitsBoard({
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.message ?? 'Action failed');
-      return;
+      return false;
     }
     const feedRes = await fetch(`/api/v1/communities/${communityId}/actions?limit=25`, {
       credentials: 'include',
     });
     if (feedRes.ok) setActions(await feedRes.json());
+    return true;
   }
 
   return (
@@ -117,9 +119,9 @@ export default function UnitsBoard({
                 <UnitCard
                   key={u.id}
                   unit={u}
-                  allowedActionTypes={allowedActionTypes}
-                  onAction={recordAction}
-                  busy={busyUnit === u.id}
+                  selected={selectedUnit?.id === u.id}
+                  canAct={allowedActionTypes.length > 0}
+                  onSelect={() => setSelectedUnit(u)}
                 />
               ))}
             </div>
@@ -164,77 +166,203 @@ export default function UnitsBoard({
           )}
         </div>
       </aside>
+
+      {selectedUnit ? (
+        <ActionDrawer
+          // Key reset clears action-type/note state when switching units.
+          key={selectedUnit.id}
+          unit={selectedUnit}
+          allowedActionTypes={allowedActionTypes}
+          recentForUnit={actions.filter((a) => a.unitId === selectedUnit.id)}
+          busy={busyUnit === selectedUnit.id}
+          onSubmit={async (actionType, metadata) => {
+            const ok = await recordAction(selectedUnit, actionType, metadata);
+            if (ok) setSelectedUnit(null);
+          }}
+          onClose={() => setSelectedUnit(null)}
+        />
+      ) : null}
     </div>
   );
 }
 
 function UnitCard({
   unit,
+  selected,
+  canAct,
+  onSelect,
+}: {
+  unit: Unit;
+  selected: boolean;
+  canAct: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      disabled={!canAct}
+      className={`text-left border rounded-sm px-3 py-2 flex items-center justify-between transition-colors ${
+        selected
+          ? 'border-line-strong bg-surface-raised'
+          : 'border-line hover:border-line-strong'
+      } ${canAct ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
+    >
+      <span className="font-mono text-sm font-medium">{unit.label}</span>
+      {canAct ? (
+        <span
+          className="text-xs"
+          style={{ color: 'var(--brand-primary)' }}
+        >
+          + Action
+        </span>
+      ) : null}
+    </button>
+  );
+}
+
+function ActionDrawer({
+  unit,
   allowedActionTypes,
-  onAction,
+  recentForUnit,
   busy,
+  onSubmit,
+  onClose,
 }: {
   unit: Unit;
   allowedActionTypes: string[];
-  onAction: (unit: Unit, actionType: string, metadata: Record<string, unknown>) => void | Promise<void>;
+  recentForUnit: Action[];
   busy: boolean;
+  onSubmit: (actionType: string, metadata: Record<string, unknown>) => void | Promise<void>;
+  onClose: () => void;
 }) {
-  const [open, setOpen] = useState(false);
   const [actionType, setActionType] = useState(allowedActionTypes[0] ?? '');
   const [note, setNote] = useState('');
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   async function submit() {
     if (!actionType) return;
-    const metadata = note ? { note } : {};
-    await onAction(unit, actionType, metadata);
-    setNote('');
-    setOpen(false);
+    await onSubmit(actionType, note ? { note } : {});
   }
 
   return (
-    <div className="border border-line rounded-sm hover:border-line-strong transition-colors">
-      <div className="px-3 py-2 flex items-center justify-between">
-        <span className="font-mono text-sm font-medium">{unit.label}</span>
-        {allowedActionTypes.length > 0 ? (
+    <div className="fixed inset-0 z-40 flex">
+      <div
+        className="flex-1"
+        style={{ background: 'rgb(0 0 0 / 0.25)' }}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <aside
+        role="dialog"
+        aria-label={`Record action on ${unit.label}`}
+        className="w-full max-w-md bg-surface border-l border-line-strong h-full flex flex-col"
+      >
+        <div className="px-5 py-4 border-b border-line flex items-start justify-between gap-4">
+          <div className="space-y-0.5">
+            <p className="text-xs uppercase tracking-wider font-medium text-ink-tertiary">
+              Record action
+            </p>
+            <p className="text-lg font-semibold tracking-tight">
+              <span className="text-ink-tertiary">{unit.block.name} /</span>{' '}
+              <span className="font-mono">{unit.label}</span>
+            </p>
+          </div>
           <button
-            onClick={() => setOpen((o) => !o)}
-            className="text-xs hover:underline"
-            style={{ color: 'var(--brand-primary)' }}
+            type="button"
+            onClick={onClose}
+            className="text-sm text-ink-tertiary hover:text-ink transition-colors"
+            aria-label="Close"
           >
-            {open ? 'Cancel' : '+ Action'}
-          </button>
-        ) : null}
-      </div>
-      {open ? (
-        <div className="border-t border-line p-3 space-y-2">
-          <select
-            value={actionType}
-            onChange={(e) => setActionType(e.target.value)}
-            className="w-full border border-line-strong rounded text-xs px-2 py-1 bg-surface"
-          >
-            {allowedActionTypes.map((t) => (
-              <option key={t} value={t}>
-                {ACTION_TYPE_LABELS[t] ?? t}
-              </option>
-            ))}
-          </select>
-          <input
-            type="text"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Note (optional)"
-            className="w-full border border-line-strong rounded text-xs px-2 py-1 bg-surface"
-          />
-          <button
-            onClick={submit}
-            disabled={busy}
-            className="w-full text-xs font-medium text-white rounded py-1.5 disabled:opacity-50"
-            style={{ background: 'var(--brand-primary)' }}
-          >
-            {busy ? 'Recording…' : 'Record'}
+            Close
           </button>
         </div>
-      ) : null}
+
+        <div className="px-5 py-5 space-y-4 border-b border-line">
+          <label className="block space-y-1.5">
+            <span className="text-xs uppercase tracking-wider font-medium text-ink-tertiary">
+              Action type
+            </span>
+            <select
+              value={actionType}
+              onChange={(e) => setActionType(e.target.value)}
+              className="w-full border border-line-strong rounded text-sm px-3 py-2 bg-surface"
+            >
+              {allowedActionTypes.map((t) => (
+                <option key={t} value={t}>
+                  {ACTION_TYPE_LABELS[t] ?? t}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-xs uppercase tracking-wider font-medium text-ink-tertiary">
+              Note <span className="text-ink-tertiary normal-case">(optional)</span>
+            </span>
+            <input
+              type="text"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="e.g. visitor name, vehicle plate"
+              className="w-full border border-line-strong rounded text-sm px-3 py-2 bg-surface"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={busy || !actionType}
+            className="w-full text-sm font-medium text-white rounded py-2 disabled:opacity-50"
+            style={{ background: 'var(--brand-primary)' }}
+          >
+            {busy ? 'Recording…' : 'Record action'}
+          </button>
+        </div>
+
+        <div className="px-5 py-4 flex-1 overflow-y-auto">
+          <div className="flex items-baseline justify-between mb-3">
+            <h3 className="text-xs uppercase tracking-wider font-medium text-ink-tertiary">
+              Recent on this unit
+            </h3>
+            <span className="font-mono text-xs text-ink-tertiary">
+              {recentForUnit.length}
+            </span>
+          </div>
+          {recentForUnit.length === 0 ? (
+            <p className="text-sm text-ink-tertiary italic">
+              No actions recorded yet for {unit.label}.
+            </p>
+          ) : (
+            <div className="border border-line rounded-sm divide-y divide-line">
+              {recentForUnit.map((a) => (
+                <div key={a.id} className="p-3 space-y-1">
+                  <p className="text-sm">
+                    <span className="font-medium">{a.actor.name}</span>{' '}
+                    <span className="text-ink-secondary">
+                      {ACTION_TYPE_VERB[a.actionType] ?? a.actionType}
+                    </span>{' '}
+                    <span className="font-mono font-medium">{a.unitLabel}</span>
+                  </p>
+                  {Object.keys(a.metadata).length > 0 ? (
+                    <p className="text-xs text-ink-secondary font-mono">
+                      {JSON.stringify(a.metadata)}
+                    </p>
+                  ) : null}
+                  <p className="text-xs font-mono text-ink-tertiary">
+                    {new Date(a.createdAt).toLocaleString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </aside>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 type Role = {
@@ -57,8 +57,76 @@ export default function RolesManager({
         </p>
       ) : null}
 
+      <button
+        onClick={() => setCreating(true)}
+        className="text-sm font-medium text-white rounded px-3 py-1.5"
+        style={{ background: 'var(--brand-primary)' }}
+      >
+        + New custom role
+      </button>
+
+      <div className="space-y-2">
+        {roles.map((role) => (
+          <div key={role.id} className="border border-line rounded-sm p-4 space-y-3">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-baseline gap-2">
+                  <h3 className="font-medium">{role.name}</h3>
+                  {role.templateKey ? (
+                    <span className="text-xs font-mono text-ink-tertiary px-1.5 py-0.5 rounded-full bg-surface-muted">
+                      template:{role.templateKey}
+                    </span>
+                  ) : (
+                    <span
+                      className="text-xs font-medium px-1.5 py-0.5 rounded-full"
+                      style={{
+                        background: 'var(--brand-primary-soft)',
+                        color: 'var(--brand-primary)',
+                      }}
+                    >
+                      custom
+                    </span>
+                  )}
+                </div>
+                {role.description ? (
+                  <p className="text-xs text-ink-secondary">{role.description}</p>
+                ) : null}
+              </div>
+              <div className="flex gap-3 text-xs shrink-0">
+                <button
+                  onClick={() => setEditing(role)}
+                  className="text-ink-secondary hover:text-ink transition-colors"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => deleteRole(role.id)}
+                  className="text-danger hover:opacity-80 transition-opacity"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {role.permissions.map((p) => (
+                <span
+                  key={p}
+                  className="font-mono text-xs px-1.5 py-0.5 rounded-full bg-surface-muted text-ink-secondary"
+                >
+                  {p}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
       {creating ? (
-        <div className="border border-line rounded-sm p-4">
+        <RoleDrawer
+          title="New custom role"
+          subtitle="Permissions are flat keys. Changes apply on the granted user's next request."
+          onClose={() => setCreating(false)}
+        >
           <RoleForm
             mode="create"
             communityId={communityId}
@@ -69,90 +137,87 @@ export default function RolesManager({
             }}
             onCancel={() => setCreating(false)}
           />
-        </div>
-      ) : (
-        <button
-          onClick={() => setCreating(true)}
-          className="text-sm font-medium text-white rounded px-3 py-1.5"
-          style={{ background: 'var(--brand-primary)' }}
-        >
-          + New custom role
-        </button>
-      )}
+        </RoleDrawer>
+      ) : null}
 
-      <div className="space-y-2">
-        {roles.map((role) => (
-          <div key={role.id} className="border border-line rounded-sm">
-            {editing?.id === role.id ? (
-              <div className="p-4">
-                <RoleForm
-                  mode="edit"
-                  communityId={communityId}
-                  permissions={permissions}
-                  initial={role}
-                  onDone={async () => {
-                    setEditing(null);
-                    await refresh();
-                  }}
-                  onCancel={() => setEditing(null)}
-                />
-              </div>
-            ) : (
-              <div className="p-4 space-y-3">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-baseline gap-2">
-                      <h3 className="font-medium">{role.name}</h3>
-                      {role.templateKey ? (
-                        <span className="text-xs font-mono text-ink-tertiary px-1.5 py-0.5 rounded-full bg-surface-muted">
-                          template:{role.templateKey}
-                        </span>
-                      ) : (
-                        <span
-                          className="text-xs font-medium px-1.5 py-0.5 rounded-full"
-                          style={{
-                            background: 'var(--brand-primary-soft)',
-                            color: 'var(--brand-primary)',
-                          }}
-                        >
-                          custom
-                        </span>
-                      )}
-                    </div>
-                    {role.description ? (
-                      <p className="text-xs text-ink-secondary">{role.description}</p>
-                    ) : null}
-                  </div>
-                  <div className="flex gap-3 text-xs shrink-0">
-                    <button
-                      onClick={() => setEditing(role)}
-                      className="text-ink-secondary hover:text-ink transition-colors"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => deleteRole(role.id)}
-                      className="text-danger hover:opacity-80 transition-opacity"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {role.permissions.map((p) => (
-                    <span
-                      key={p}
-                      className="font-mono text-xs px-1.5 py-0.5 rounded-full bg-surface-muted text-ink-secondary"
-                    >
-                      {p}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
+      {editing ? (
+        <RoleDrawer
+          key={editing.id}
+          title={`Edit role`}
+          subtitle={editing.name}
+          onClose={() => setEditing(null)}
+        >
+          <RoleForm
+            mode="edit"
+            communityId={communityId}
+            permissions={permissions}
+            initial={editing}
+            onDone={async () => {
+              setEditing(null);
+              await refresh();
+            }}
+            onCancel={() => setEditing(null)}
+          />
+        </RoleDrawer>
+      ) : null}
+    </div>
+  );
+}
+
+function RoleDrawer({
+  title,
+  subtitle,
+  onClose,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-40 flex">
+      <div
+        className="flex-1"
+        style={{ background: 'rgb(0 0 0 / 0.25)' }}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <aside
+        role="dialog"
+        aria-label={title}
+        className="w-full max-w-md bg-surface border-l border-line-strong h-full flex flex-col"
+      >
+        <div className="px-5 py-4 border-b border-line flex items-start justify-between gap-4">
+          <div className="space-y-0.5 min-w-0">
+            <p className="text-xs uppercase tracking-wider font-medium text-ink-tertiary">
+              {title}
+            </p>
+            {subtitle ? (
+              <p className="text-lg font-semibold tracking-tight truncate">
+                {subtitle}
+              </p>
+            ) : null}
           </div>
-        ))}
-      </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-sm text-ink-tertiary hover:text-ink transition-colors"
+            aria-label="Close"
+          >
+            Close
+          </button>
+        </div>
+        <div className="px-5 py-5 flex-1 overflow-y-auto">{children}</div>
+      </aside>
     </div>
   );
 }
@@ -242,7 +307,7 @@ function RoleForm({
         <label className="block text-xs font-medium text-ink-secondary mb-2">
           Permissions
         </label>
-        <div className="grid sm:grid-cols-2 gap-1.5">
+        <div className="grid gap-1">
           {permissions.map((p) => (
             <label
               key={p}
