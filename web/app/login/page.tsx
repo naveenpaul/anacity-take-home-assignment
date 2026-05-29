@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 const SEED_USERS: Array<{ email: string; label: string; role: string }> = [
+  { email: 'boss@prestige.dev', role: 'Tenant super admin — every Prestige community', label: 'Boss (Prestige)' },
+  { email: 'boss@sobha.dev', role: 'Tenant super admin — every Sobha community', label: 'Boss (Sobha)' },
   { email: 'alice@prestige.dev', role: 'Admin @ Lakeside, Resident @ Falcon', label: 'Alice' },
   { email: 'bob@sobha.dev', role: 'Admin @ both Sobha communities', label: 'Bob' },
   { email: 'carol@anacity.dev', role: 'Resident @ Lakeside AND Dream Acres', label: 'Carol' },

@@ -118,6 +118,29 @@ async function main() {
     }
   }
 
+  console.log('Instantiating tenant-wide admin roles (one per tenant)…');
+  // A tenant-wide role: Role.communityId IS NULL. Used by tenant super
+  // admin grants. Permissions: full admin set.
+  const tenantAdminRoleByTenant = new Map<string, string>();
+  for (const tenant of [prestige, sobha]) {
+    const role = await prisma.role.create({
+      data: {
+        tenantId: tenant.id,
+        communityId: null,
+        templateKey: 'admin',
+        name: 'Tenant Admin',
+        description: `Tenant-wide admin for ${tenant.name}`,
+      },
+    });
+    await prisma.rolePermission.createMany({
+      data: PERMISSIONS.map((pkey) => ({
+        roleId: role.id,
+        permissionId: permIdByKey.get(pkey)!,
+      })),
+    });
+    tenantAdminRoleByTenant.set(tenant.id, role.id);
+  }
+
   console.log('Seeding users (password: "dev")…');
   const passwordHash = await bcrypt.hash('dev', 10);
   const alice = await prisma.user.create({ data: { email: 'alice@prestige.dev', name: 'Alice', passwordHash } });
@@ -125,11 +148,13 @@ async function main() {
   const carol = await prisma.user.create({ data: { email: 'carol@anacity.dev',  name: 'Carol', passwordHash } });
   const dave  = await prisma.user.create({ data: { email: 'dave@prestige.dev',  name: 'Dave',  passwordHash } });
   const ravi  = await prisma.user.create({ data: { email: 'ravi@prestige.dev',  name: 'Ravi',  passwordHash } });
+  const bossPrestige = await prisma.user.create({ data: { email: 'boss@prestige.dev', name: 'Boss (Prestige)', passwordHash } });
+  const bossSobha    = await prisma.user.create({ data: { email: 'boss@sobha.dev',    name: 'Boss (Sobha)',    passwordHash } });
 
   console.log('Seeding memberships + role grants…');
-  async function grant(userId: string, communityId: string, roleKey: string, granterId: string) {
+  async function grant(userId: string, tenantId: string, communityId: string, roleKey: string, granterId: string) {
     const membership = await prisma.membership.create({
-      data: { userId, communityId, status: 'active' },
+      data: { userId, tenantId, communityId, status: 'active' },
     });
     const roleId = roleIdByCommunityAndKey.get(`${communityId}:${roleKey}`)!;
     await prisma.membershipRole.create({
@@ -137,20 +162,37 @@ async function main() {
     });
   }
 
+  async function grantTenantWide(userId: string, tenantId: string, granterId: string) {
+    const membership = await prisma.membership.create({
+      data: { userId, tenantId, communityId: null, status: 'active' },
+    });
+    await prisma.membershipRole.create({
+      data: {
+        membershipId: membership.id,
+        roleId: tenantAdminRoleByTenant.get(tenantId)!,
+        grantedById: granterId,
+      },
+    });
+  }
+
   // alice — admin @ Lakeside, resident @ Falcon
-  await grant(alice.id, lakeside.id, 'admin',    alice.id);
-  await grant(alice.id, falcon.id,   'resident', alice.id);
+  await grant(alice.id, prestige.id, lakeside.id, 'admin',    alice.id);
+  await grant(alice.id, prestige.id, falcon.id,   'resident', alice.id);
   // bob — admin @ both Sobha
-  await grant(bob.id, dreamAcres.id, 'admin', bob.id);
-  await grant(bob.id, forestView.id, 'admin', bob.id);
+  await grant(bob.id, sobha.id, dreamAcres.id, 'admin', bob.id);
+  await grant(bob.id, sobha.id, forestView.id, 'admin', bob.id);
   // carol — cross-tenant resident
-  await grant(carol.id, lakeside.id,   'resident', alice.id);
-  await grant(carol.id, dreamAcres.id, 'resident', bob.id);
+  await grant(carol.id, prestige.id, lakeside.id,   'resident', alice.id);
+  await grant(carol.id, sobha.id,    dreamAcres.id, 'resident', bob.id);
   // dave — resident @ Falcon (recipient of dynamic-role demo)
-  await grant(dave.id, falcon.id, 'resident', alice.id);
+  await grant(dave.id, prestige.id, falcon.id, 'resident', alice.id);
   // ravi — security across both Prestige
-  await grant(ravi.id, lakeside.id, 'security', alice.id);
-  await grant(ravi.id, falcon.id,   'security', alice.id);
+  await grant(ravi.id, prestige.id, lakeside.id, 'security', alice.id);
+  await grant(ravi.id, prestige.id, falcon.id,   'security', alice.id);
+
+  // Tenant super admins
+  await grantTenantWide(bossPrestige.id, prestige.id, bossPrestige.id);
+  await grantTenantWide(bossSobha.id,    sobha.id,    bossSobha.id);
 
   console.log('Done.');
 }

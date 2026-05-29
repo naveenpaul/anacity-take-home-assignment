@@ -46,6 +46,7 @@ const config: Config = {
         // Standard scale; Tailwind's defaults already match closely.
       },
       fontSize: {
+        '3xs': ['10px', '13px'],
         '2xs': ['11px', '14px'],
         xs: ['12px', '16px'],
         sm: ['13px', '18px'],

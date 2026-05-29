@@ -7,6 +7,7 @@ dist/
 .next/
 out/
 build/
+*.tsbuildinfo
 
 # env
 .env
@@ -38,3 +39,4 @@ api/prisma/generated/
 
 # Claude / agent local state
 .claude/
+.gstack/

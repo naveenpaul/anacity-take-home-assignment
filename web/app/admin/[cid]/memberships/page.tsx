@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect, notFound } from 'next/navigation';
 import { apiGet } from '../../../lib/api';
-import { getCurrentUser } from '../../../lib/auth';
+import { effectiveMemberships, getCurrentUser } from '../../../lib/auth';
 import MembershipsManager from './memberships-manager';
 
 type Role = { id: string; name: string; templateKey: string | null };
@@ -28,7 +28,7 @@ export default async function MembershipsAdminPage({
   const me = await getCurrentUser();
   if (!me) redirect('/login');
 
-  const membership = me.memberships.find((m) => m.community.id === params.cid);
+  const membership = effectiveMemberships(me).find((m) => m.community.id === params.cid);
   if (!membership) notFound();
 
   const [memberships, roles, blocks] = await Promise.all([

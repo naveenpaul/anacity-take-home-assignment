@@ -28,6 +28,7 @@ model Tenant {
 
   communities Community[]
   roles       Role[]
+  memberships Membership[]
 
   @@map("tenants")
 }
@@ -102,17 +103,24 @@ model User {
 model Membership {
   id          String    @id @default(uuid()) @db.Uuid
   userId      String    @map("user_id") @db.Uuid
-  communityId String    @map("community_id") @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  communityId String?   @map("community_id") @db.Uuid
   status      String    @default("active")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
   deletedAt   DateTime? @map("deleted_at")
 
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  community       Community        @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  community       Community?       @relation(fields: [communityId], references: [id], onDelete: Cascade)
   membershipRoles MembershipRole[]
 
-  @@unique([userId, communityId])
+  // `community_id IS NULL` means tenant-wide membership: roles granted on
+  // this row apply to every community in `tenant_id`. The app-level
+  // duplicate check sits in the membership-create paths; production adds
+  // two partial unique indexes via raw SQL migration (one for
+  // community-scoped, one for tenant-wide-per-user-per-tenant).
+  @@index([userId, tenantId])
   @@index([communityId])
   @@map("memberships")
 }

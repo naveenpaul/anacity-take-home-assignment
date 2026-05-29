@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { getCurrentUser } from '../lib/auth';
+import { effectiveMemberships, getCurrentUser } from '../lib/auth';
 import { getTenant } from '../tenant';
 import LogoutButton from './logout-button';
 
@@ -8,15 +8,19 @@ export default async function HomePage() {
   const [me, tenant] = await Promise.all([getCurrentUser(), getTenant()]);
   if (!me) redirect('/login');
 
+  // Effective list = community memberships + synthesized rows for
+  // communities covered by a tenant-wide membership.
+  const effective = effectiveMemberships(me);
+
   // Scope visible memberships to the current tenant (cross-tenant identity
   // — same user, different visible communities per host).
   const visible = tenant
-    ? me.memberships.filter((m) => m.community.tenant.slug === tenant.slug)
-    : me.memberships;
+    ? effective.filter((m) => m.community.tenant.slug === tenant.slug)
+    : effective;
 
   const otherTenants = Array.from(
     new Set(
-      me.memberships
+      effective
         .filter((m) => !tenant || m.community.tenant.slug !== tenant.slug)
         .map((m) => m.community.tenant.slug),
     ),
@@ -25,6 +29,13 @@ export default async function HomePage() {
   const hasAdmin = visible.some((m) =>
     m.roles.some((r) => r.role.templateKey === 'admin'),
   );
+  const isTenantSuperAdmin = tenant
+    ? me.tenantWideMemberships.some(
+        (tw) =>
+          tw.tenant.slug === tenant.slug &&
+          tw.roles.some((r) => r.role.templateKey === 'admin'),
+      )
+    : false;
 
   return (
     <div className="space-y-10">
@@ -39,12 +50,16 @@ export default async function HomePage() {
         <LogoutButton />
       </div>
 
-      {tenant && hasAdmin ? (
+      {tenant && (hasAdmin || isTenantSuperAdmin) ? (
         <div className="border border-line rounded-sm p-4 flex items-center justify-between bg-surface-raised">
           <div>
-            <p className="text-sm font-medium">Tenant admin</p>
+            <p className="text-sm font-medium">
+              {isTenantSuperAdmin ? 'Tenant super admin' : 'Tenant admin'}
+            </p>
             <p className="text-xs text-ink-secondary mt-0.5">
-              You're admin in at least one {tenant.name} community.
+              {isTenantSuperAdmin
+                ? `You hold a tenant-wide admin role at ${tenant.name} — every community below is administrable.`
+                : `You're admin in at least one ${tenant.name} community.`}
             </p>
           </div>
           <Link
@@ -108,15 +123,22 @@ export default async function HomePage() {
                           {m.community.tenant.name}
                         </p>
                       </div>
-                      <span
-                        className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0"
-                        style={{
-                          background: 'var(--brand-primary-soft)',
-                          color: 'var(--brand-primary)',
-                        }}
-                      >
-                        {m.roles[0]?.role.name ?? 'No role'}
-                      </span>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <span
+                          className="text-xs px-2 py-0.5 rounded-full font-medium"
+                          style={{
+                            background: 'var(--brand-primary-soft)',
+                            color: 'var(--brand-primary)',
+                          }}
+                        >
+                          {m.roles[0]?.role.name ?? 'No role'}
+                        </span>
+                        {m.fromTenantWide ? (
+                          <span className="text-2xs font-mono text-ink-tertiary">
+                            via tenant grant
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                     <p className="text-sm font-medium" style={{ color: 'var(--brand-primary)' }}>
                       Open dashboard →

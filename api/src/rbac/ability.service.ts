@@ -60,38 +60,87 @@ export class AbilityService {
 
   /**
    * Resolve the ability for a (user, community) pair.
-   * Throws if the user has no active membership in the community.
+   *
+   * Loads grants from two sources and unions them:
+   *  1. The user's community-scoped membership for this community
+   *     (block/unit scope applies as written on each MembershipRole row).
+   *  2. Any tenant-wide membership the user has in this community's
+   *     tenant (Membership.communityId IS NULL). Tenant-wide grants
+   *     apply community-wide — block/unit scope is ignored on them.
+   *
+   * Throws ForbiddenException only if the user has neither.
    */
   async resolve(userId: string, communityId: string): Promise<UserAbility> {
-    const membership = await this.prisma.membership.findFirst({
-      where: { userId, communityId, deletedAt: null, status: 'active' },
-      include: {
-        membershipRoles: {
-          include: {
-            role: {
-              include: {
-                rolePermissions: { include: { permission: true } },
-              },
+    const community = await this.prisma.community.findUnique({
+      where: { id: communityId },
+      select: { tenantId: true },
+    });
+    if (!community) {
+      throw new ForbiddenException('Community not found');
+    }
+
+    const includeRoles = {
+      membershipRoles: {
+        include: {
+          role: {
+            include: {
+              rolePermissions: { include: { permission: true } },
             },
           },
         },
       },
-    });
-    if (!membership) {
+    } as const;
+
+    const [communityMembership, tenantMemberships] = await Promise.all([
+      this.prisma.membership.findFirst({
+        where: { userId, communityId, deletedAt: null, status: 'active' },
+        include: includeRoles,
+      }),
+      this.prisma.membership.findMany({
+        where: {
+          userId,
+          tenantId: community.tenantId,
+          communityId: null,
+          deletedAt: null,
+          status: 'active',
+        },
+        include: includeRoles,
+      }),
+    ]);
+
+    if (!communityMembership && tenantMemberships.length === 0) {
       throw new ForbiddenException('No active membership in this community');
     }
 
     const grants: ScopedGrant[] = [];
-    for (const mr of membership.membershipRoles) {
-      if (mr.role.deletedAt) continue;
-      for (const rp of mr.role.rolePermissions) {
-        grants.push({
-          permission: rp.permission.key,
-          blockId: mr.blockId,
-          unitId: mr.unitId,
-        });
+
+    if (communityMembership) {
+      for (const mr of communityMembership.membershipRoles) {
+        if (mr.role.deletedAt) continue;
+        for (const rp of mr.role.rolePermissions) {
+          grants.push({
+            permission: rp.permission.key,
+            blockId: mr.blockId,
+            unitId: mr.unitId,
+          });
+        }
       }
     }
+
+    // Tenant-wide grants always apply community-wide.
+    for (const tm of tenantMemberships) {
+      for (const mr of tm.membershipRoles) {
+        if (mr.role.deletedAt) continue;
+        for (const rp of mr.role.rolePermissions) {
+          grants.push({
+            permission: rp.permission.key,
+            blockId: null,
+            unitId: null,
+          });
+        }
+      }
+    }
+
     return new UserAbility(userId, communityId, grants);
   }
 }

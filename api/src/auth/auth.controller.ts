@@ -51,6 +51,7 @@ export class AuthController {
         memberships: {
           where: { deletedAt: null, status: 'active' },
           include: {
+            tenant: { select: { id: true, slug: true, name: true } },
             community: {
               include: { tenant: { select: { id: true, slug: true, name: true } } },
             },
@@ -66,17 +67,38 @@ export class AuthController {
       },
     });
     if (!user) throw new UnauthorizedException('Stale session');
+
+    // Split memberships into community-scoped (existing shape) and
+    // tenant-wide (new). Tenant-wide memberships are enriched with the
+    // list of all communities in that tenant so the home page can show
+    // a tenant super admin every community they can act on.
+    const communityScoped = user.memberships.filter((m) => m.communityId !== null);
+    const tenantWideRaw = user.memberships.filter((m) => m.communityId === null);
+
+    const tenantWideAccessibleCommunities = tenantWideRaw.length
+      ? await this.prisma.community.findMany({
+          where: { tenantId: { in: tenantWideRaw.map((m) => m.tenantId) } },
+          select: {
+            id: true,
+            name: true,
+            tenantId: true,
+            tenant: { select: { id: true, slug: true, name: true } },
+          },
+          orderBy: { name: 'asc' },
+        })
+      : [];
+
     return {
       id: user.id,
       email: user.email,
       name: user.name,
-      memberships: user.memberships.map((m) => ({
+      memberships: communityScoped.map((m) => ({
         id: m.id,
         status: m.status,
         community: {
-          id: m.community.id,
-          name: m.community.name,
-          tenant: m.community.tenant,
+          id: m.community!.id,
+          name: m.community!.name,
+          tenant: m.community!.tenant,
         },
         roles: m.membershipRoles.map((mr) => ({
           membershipRoleId: mr.id,
@@ -84,6 +106,18 @@ export class AuthController {
           block: mr.block,
           unit: mr.unit,
         })),
+      })),
+      tenantWideMemberships: tenantWideRaw.map((m) => ({
+        id: m.id,
+        status: m.status,
+        tenant: m.tenant,
+        roles: m.membershipRoles.map((mr) => ({
+          membershipRoleId: mr.id,
+          role: mr.role,
+        })),
+        accessibleCommunities: tenantWideAccessibleCommunities
+          .filter((c) => c.tenantId === m.tenantId)
+          .map((c) => ({ id: c.id, name: c.name, tenant: c.tenant })),
       })),
     };
   }
