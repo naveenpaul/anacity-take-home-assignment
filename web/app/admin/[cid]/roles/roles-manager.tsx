@@ -123,8 +123,8 @@ export default function RolesManager({
 
       {creating ? (
         <RoleDrawer
-          title="New custom role"
-          subtitle="Permissions are flat keys. Changes apply on the granted user's next request."
+          title="Create role"
+          subtitle="New custom role"
           onClose={() => setCreating(false)}
         >
           <RoleForm

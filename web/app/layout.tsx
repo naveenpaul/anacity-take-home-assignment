@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
 import Link from 'next/link';
+import { getCurrentUser } from './lib/auth';
 import { getTenant } from './tenant';
 
 export const metadata: Metadata = {
@@ -15,7 +16,7 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const tenant = await getTenant();
+  const [tenant, me] = await Promise.all([getTenant(), getCurrentUser()]);
   const primary = tenant?.branding?.primaryColor ?? '#525252';
 
   // Hex (#RRGGBB) → rgba with 10% alpha for soft accent surfaces (badges, hover).
@@ -47,7 +48,7 @@ export default async function RootLayout({
                 ) : null}
               </div>
             </Link>
-            {tenant ? (
+            {tenant && me ? (
               <nav className="flex items-center gap-5 text-sm">
                 <Link
                   href="/home"
