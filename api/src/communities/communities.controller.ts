@@ -48,29 +48,9 @@ export class CommunitiesController {
     });
   }
 
-  /**
-   * Pass if the user has either a community-scoped membership OR a
-   * tenant-wide membership in this community's tenant. Same union the
-   * ability resolver uses — kept in sync deliberately.
-   */
   private async assertMember(userId: string, communityId: string) {
-    const community = await this.prisma.community.findUnique({
-      where: { id: communityId },
-      select: { tenantId: true },
-    });
-    if (!community) throw new ForbiddenException('Not a member of this community');
-    const m = await this.prisma.membership.findFirst({
-      where: {
-        userId,
-        deletedAt: null,
-        status: 'active',
-        OR: [
-          { communityId },
-          { tenantId: community.tenantId, communityId: null },
-        ],
-      },
-      select: { id: true },
-    });
-    if (!m) throw new ForbiddenException('Not a member of this community');
+    if (!(await this.ability.isMember(userId, communityId))) {
+      throw new ForbiddenException('Not a member of this community');
+    }
   }
 }

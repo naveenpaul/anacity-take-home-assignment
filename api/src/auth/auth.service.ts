@@ -17,11 +17,18 @@ export class AuthService {
     return process.env.JWT_EXPIRES_IN ?? '1h';
   }
 
+  // Pre-computed bcrypt hash of a string the user can never produce. Used
+  // to keep the missing-user path the same shape (and roughly the same
+  // duration) as the wrong-password path, so response time can't be used
+  // to enumerate which emails exist.
+  private static readonly DUMMY_HASH =
+    '$2b$10$CwTycUXWue0Thq9StjUM0uJ8eXgC.O4QYqu5UfFv1A2qhqJSqLfVy';
+
   async validate(email: string, password: string) {
     const user = await this.prisma.user.findUnique({ where: { email } });
-    if (!user) throw new UnauthorizedException('Invalid credentials');
-    const ok = await bcrypt.compare(password, user.passwordHash);
-    if (!ok) throw new UnauthorizedException('Invalid credentials');
+    const hash = user?.passwordHash ?? AuthService.DUMMY_HASH;
+    const ok = await bcrypt.compare(password, hash);
+    if (!user || !ok) throw new UnauthorizedException('Invalid credentials');
     return user;
   }
 

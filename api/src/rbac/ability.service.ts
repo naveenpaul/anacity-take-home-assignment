@@ -63,6 +63,35 @@ export class AbilityService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
+   * Canonical "can this user see this community?" predicate. Used by
+   * read-only endpoints (units, actions feed) that don't need a full
+   * ability resolution. Returns true if the user has either a
+   * community-scoped membership OR a tenant-wide membership in the
+   * same tenant. Returns false for a missing community ID — same
+   * shape as `resolve` to avoid leaking existence.
+   */
+  async isMember(userId: string, communityId: string): Promise<boolean> {
+    const community = await this.prisma.community.findUnique({
+      where: { id: communityId },
+      select: { tenantId: true },
+    });
+    if (!community) return false;
+    const m = await this.prisma.membership.findFirst({
+      where: {
+        userId,
+        deletedAt: null,
+        status: 'active',
+        OR: [
+          { communityId },
+          { tenantId: community.tenantId, communityId: null },
+        ],
+      },
+      select: { id: true },
+    });
+    return m !== null;
+  }
+
+  /**
    * Resolve the ability for a (user, community) pair.
    *
    * Loads grants from two sources and unions them:
@@ -80,7 +109,9 @@ export class AbilityService {
       select: { tenantId: true },
     });
     if (!community) {
-      throw new ForbiddenException('Community not found');
+      // Same message + status as the "no membership" branch below — don't
+      // leak existence of community IDs via differing responses.
+      throw new ForbiddenException('No active membership in this community');
     }
 
     const includeRoles = {

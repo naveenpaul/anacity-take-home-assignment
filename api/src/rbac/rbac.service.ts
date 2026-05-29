@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -99,14 +100,14 @@ export class RbacService {
   }
 
   /**
-   * Tenant users who are NOT yet community-scoped members of this
-   * community. Includes users with only a tenant-wide membership
-   * (because we still want admins to be able to give them an
-   * explicit community-scoped role with block/unit scope on top).
-   * Excludes users with no membership anywhere in this tenant —
-   * cross-tenant identity is preserved, but the admin UI only
-   * surfaces people who already belong to *some* community in the
-   * same tenant.
+   * Tenant users eligible to be added as community-scoped members.
+   * Includes users who hold any *community-scoped* membership somewhere
+   * in this tenant. Excludes:
+   *   - users already community-scoped here (would dupe)
+   *   - users with only a tenant-wide membership in this tenant; they
+   *     already effectively belong to every community via the tenant
+   *     grant, so listing them as "add" is misleading
+   *   - users with no membership anywhere in this tenant
    */
   async listEligibleUsersForCommunity(communityId: string) {
     const community = await this.prisma.community.findUnique({
@@ -115,12 +116,12 @@ export class RbacService {
     });
     if (!community) throw new NotFoundException('Community not found');
 
-    // Anyone with any active membership in this tenant.
     const candidates = await this.prisma.user.findMany({
       where: {
         memberships: {
           some: {
             tenantId: community.tenantId,
+            communityId: { not: null },
             deletedAt: null,
             status: 'active',
           },
@@ -130,7 +131,6 @@ export class RbacService {
       orderBy: { name: 'asc' },
     });
 
-    // Exclude users who already have a community-scoped membership here.
     const existing = await this.prisma.membership.findMany({
       where: { communityId, deletedAt: null },
       select: { userId: true },
@@ -175,26 +175,37 @@ export class RbacService {
       }
     }
 
-    const membership = await this.prisma.membership.create({
-      data: {
-        userId: input.userId,
-        tenantId: community.tenantId,
-        communityId: input.communityId,
-        status: 'active',
-        ...(input.initialRoleId
-          ? {
-              membershipRoles: {
-                create: {
-                  roleId: input.initialRoleId,
-                  blockId: input.initialBlockId ?? null,
-                  grantedById: input.grantedById,
+    // The findFirst dedupe check above is racy; rely on the partial unique
+    // index `memberships_user_id_community_id_key` to enforce the invariant
+    // under concurrency, and convert P2002 into the same BadRequest the
+    // pre-check would have thrown.
+    try {
+      const membership = await this.prisma.membership.create({
+        data: {
+          userId: input.userId,
+          tenantId: community.tenantId,
+          communityId: input.communityId,
+          status: 'active',
+          ...(input.initialRoleId
+            ? {
+                membershipRoles: {
+                  create: {
+                    roleId: input.initialRoleId,
+                    blockId: input.initialBlockId ?? null,
+                    grantedById: input.grantedById,
+                  },
                 },
-              },
-            }
-          : {}),
-      },
-    });
-    return { ...membership, tenantId: community.tenantId };
+              }
+            : {}),
+        },
+      });
+      return { ...membership, tenantId: community.tenantId };
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new BadRequestException('User already a member of this community');
+      }
+      throw err;
+    }
   }
 
   async listMembershipsInCommunity(communityId: string) {
@@ -243,9 +254,6 @@ export class RbacService {
     }
     if (role.communityId !== input.communityId) {
       throw new BadRequestException('Role does not belong to this community');
-    }
-    if (role.communityId !== membership.communityId) {
-      throw new BadRequestException('Role and membership belong to different communities');
     }
     if (input.blockId) {
       const block = await this.prisma.block.findUnique({ where: { id: input.blockId } });

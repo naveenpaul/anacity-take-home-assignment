@@ -2,9 +2,9 @@ import { Body, Controller, ForbiddenException, Get, Param, Post, Query, UseGuard
 import { IsObject, IsOptional, IsString, MinLength } from 'class-validator';
 import { JwtCookieGuard } from '../auth/jwt-cookie.guard';
 import { CurrentUser, type AuthedUser } from '../auth/current-user.decorator';
+import { AbilityService } from '../rbac/ability.service';
 import { ActionsService } from './actions.service';
 import { knownActionTypes } from './action-types';
-import { PrismaService } from '../prisma/prisma.service';
 
 class CreateActionDto {
   @IsString()
@@ -21,7 +21,7 @@ class CreateActionDto {
 export class ActionsController {
   constructor(
     private readonly actions: ActionsService,
-    private readonly prisma: PrismaService,
+    private readonly ability: AbilityService,
   ) {}
 
   @Get('action-types')
@@ -66,29 +66,9 @@ export class ActionsController {
     });
   }
 
-  /**
-   * Pass if the user has either a community-scoped membership OR a
-   * tenant-wide membership in this community's tenant. Same union the
-   * ability resolver uses — kept in sync deliberately.
-   */
   private async assertMember(userId: string, communityId: string) {
-    const community = await this.prisma.community.findUnique({
-      where: { id: communityId },
-      select: { tenantId: true },
-    });
-    if (!community) throw new ForbiddenException('Not a member of this community');
-    const m = await this.prisma.membership.findFirst({
-      where: {
-        userId,
-        deletedAt: null,
-        status: 'active',
-        OR: [
-          { communityId },
-          { tenantId: community.tenantId, communityId: null },
-        ],
-      },
-      select: { id: true },
-    });
-    if (!m) throw new ForbiddenException('Not a member of this community');
+    if (!(await this.ability.isMember(userId, communityId))) {
+      throw new ForbiddenException('Not a member of this community');
+    }
   }
 }

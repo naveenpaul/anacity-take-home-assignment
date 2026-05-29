@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post, UseGuards, UseInterceptors } from '@nestjs/common';
 import { IsArray, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 import { JwtCookieGuard } from '../auth/jwt-cookie.guard';
 import { CurrentUser, type AuthedUser } from '../auth/current-user.decorator';
@@ -91,7 +91,7 @@ export class RbacController {
   @Audit({ entity: 'Role', action: 'create' })
   async createRole(@Param('communityId') communityId: string, @Body() dto: CreateRoleDto) {
     const community = await this.prisma.community.findUnique({ where: { id: communityId } });
-    if (!community) throw new Error('Community not found');
+    if (!community) throw new NotFoundException('Community not found');
     return this.rbac.createRole({
       tenantId: community.tenantId,
       communityId,
