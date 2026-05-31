@@ -52,8 +52,9 @@ Seed users (password is always `dev`):
 ### Run the test suite
 
 ```bash
-pnpm --filter api test           # all 30 isolation tests, ~12s
+pnpm --filter api test           # 42 backend tests (isolation + RBAC CRUD), ~13s
 pnpm --filter api test:isolation # same suite, named target
+pnpm --filter web test           # web component tests (Vitest + Testing Library)
 ```
 
 The suite covers every row of design doc §12: cross-tenant deny,
@@ -239,7 +240,7 @@ taking effect on the next request.
 
 **Frontend.** Next.js (App Router) with React Server Components · TailwindCSS. Edge middleware (`middleware.ts`) handles domain → tenant resolution server-side so branding renders without flash. NestJS is the API; Next.js API routes are used only for BFF concerns.
 
-**Test.** Jest + Supertest for backend integration (the isolation matrix). Playwright for the 5 E2E flows is planned, not shipped in the POC — see [`docs/scope-rationale.md`](./docs/scope-rationale.md).
+**Test.** Jest + Supertest for backend integration (isolation matrix + RBAC CRUD/feed coverage) · Vitest + React Testing Library for web component tests (membership flows). Playwright for the 5 E2E flows is planned, not shipped in the POC — see [`docs/scope-rationale.md`](./docs/scope-rationale.md).
 
 ---
 
@@ -256,7 +257,8 @@ taking effect on the next request.
 | See the test plan | §12 of the design doc; QA-focused view in [`docs/test-plan.md`](./docs/test-plan.md) |
 | See the implementation workstreams | [`docs/workstreams.md`](./docs/workstreams.md) |
 | See how to run it locally | [`docs/local-dev.md`](./docs/local-dev.md) — `*.localhost` tenant pattern, seed users, common workflows |
-| See the isolation tests | [`api/test/isolation/`](./api/test/isolation/) — 9 specs, 30 tests covering design §12 + RBAC mutations |
+| See the backend tests | [`api/test/isolation/`](./api/test/isolation/) — 11 specs, 42 tests: design §12 isolation + RBAC CRUD/read/error branches + the activity feed |
+| See the web tests | [`web/test/`](./web/test/) — Vitest component tests for the membership search-or-create + grant-role flows |
 
 ---
 
@@ -271,7 +273,7 @@ The foundation shipped as five workstreams:
 | W2 | Auth + dynamic RBAC + admin UI for roles and memberships |
 | W3 | UnitAction recording + per-community dashboard with activity feed |
 | W4 | Tenant branding admin (`manage_branding` permission + editor) |
-| W5 | Isolation matrix (now 30 tests, 9 suites, all green in ~12s) |
+| W5 | Test suite — backend isolation + RBAC CRUD (42 tests, 11 suites) and web component tests (Vitest), all green |
 
 Subsequent passes on `main` build on that foundation:
 
