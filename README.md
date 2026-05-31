@@ -27,7 +27,7 @@ pnpm install
 cp .env.example .env
 docker compose up -d postgres        # Postgres on host port 5433
 pnpm db:migrate                      # apply Prisma schema
-pnpm db:seed                         # 2 tenants × 2 communities, 5 users
+pnpm db:seed                         # 2 tenants × 2 communities, 7 users
 pnpm dev                             # api :3001, web :3000
 ```
 
@@ -41,6 +41,8 @@ Seed users (password is always `dev`):
 
 | Email | Use for |
 |---|---|
+| `boss@prestige.dev` | Tenant super admin — tenant-wide grant over every Prestige community |
+| `boss@sobha.dev` | Tenant super admin — tenant-wide grant over every Sobha community |
 | `alice@prestige.dev` | Admin @ Lakeside, Resident @ Falcon — multi-community within a tenant |
 | `bob@sobha.dev` | Admin @ both Sobha communities |
 | `carol@anacity.dev` | Resident in BOTH Prestige Lakeside AND Sobha Dream Acres — cross-tenant identity |
@@ -69,12 +71,13 @@ UnitAction, and cross-tenant identity.
    Sobha Dream Acres visible (same identity, different scope per host)
 4. As alice → "Roles" → "+ New custom role" → "Night Shift Security"
    with `approve_visitor` only → save
-5. "Memberships" → grant Night Shift Security to **dave** with Block
-   scope = Block A → save
+5. "Memberships" → "+ Add member" (search an existing tenant user, or
+   type a new email to create one inline) → then "+ Grant role" → grant
+   Night Shift Security to **dave** with Block scope = Block A → save
 6. Sign in as **dave** → on Block A units the "Approve visitor"
    action appears; on Block B units it doesn't (scope enforced)
-7. "Brand settings" → change Prestige primary color → header swatch
-   updates on next navigation
+7. "Brand settings" → upload a logo and/or change the primary color →
+   the header logo + accent update on next navigation
 
 ---
 
@@ -104,11 +107,13 @@ UnitAction, and cross-tenant identity.
 | 6 | Multi-community management | **Users are global identities** with N `Memberships`. A user can manage 5 communities concurrently; each request authorizes against the community in the URL. |
 | 7 | Weak white-labeling | **Branding lives on `Tenant`** with a unique `slug`. A middleware resolves tenant from `Host`; Next.js edge middleware applies branding server-side so there's no flash of unbranded content. POC uses subdomains (`prestige.localhost:3000`, `sobha.localhost:3000`). Vanity apex domains are production hardening, not POC scope. |
 
-Plus two additions the original system didn't have:
+Plus additions the original system didn't have:
 
 - **System role templates** so creating a community auto-instantiates standard roles (Admin/Resident/Security/Manager); each community can then edit them or add custom ones. Same instantiation pattern, no per-community hand-build.
 - **Block/unit-scoped grants** so a tower committee member manages only their tower, not the whole community.
 - **RBAC audit log** for every permission grant — closes the "who granted whom what?" forensic gap.
+- **Admin user provisioning** — from a community's Memberships screen, an admin can attach an existing tenant user or create a brand-new account inline (one search-or-create field, backed by `POST /communities/:id/users`).
+- **Per-tenant logo + accent** — the branding editor takes an uploaded logo (stored inline) and a primary color; both flow into the global header and every CTA/focus ring. No-tenant surfaces fall back to the Anacity brand.
 
 ---
 
@@ -184,6 +189,7 @@ Tenant: Sobha      (sobha.localhost:3000)
   └── Sobha Forest View
 
 Users:
+  boss(es) tenant super admin per tenant               (tenant-wide grant, all communities)
   alice    admin @ Lakeside, resident @ Falcon         (multi-community, same tenant)
   bob      admin @ both Sobha communities
   carol    resident @ Lakeside AND @ Dream Acres       (cross-tenant identity)
@@ -257,16 +263,26 @@ taking effect on the next request.
 ## Status
 
 This submission is a **design + working POC + isolation test suite**.
-The repo ships in six commits on `main`:
+The foundation shipped as five workstreams:
 
-| Commit | Workstream |
+| Workstream | Scope |
 |---|---|
-| `cabe21a` | Design + supporting docs (scope rationale, test plan, workstreams, local-dev) |
-| `f780063` | W1 — Monorepo + Prisma schema + seed (2 tenants × 2 communities × 5 users) |
-| `485e57c` | W2 — Auth + dynamic RBAC + admin UI for roles and memberships |
-| `6ff2c58` | W3 — UnitAction recording + per-community dashboard with activity feed |
-| `a3b1ffe` | W4 — Tenant branding admin (`manage_branding` permission + editor) |
-| `5c30be2` | W5 — Isolation matrix (18 tests, 7 suites, all green in ~6s) |
+| W1 | Monorepo + Prisma schema + seed (2 tenants × 2 communities × 7 users) |
+| W2 | Auth + dynamic RBAC + admin UI for roles and memberships |
+| W3 | UnitAction recording + per-community dashboard with activity feed |
+| W4 | Tenant branding admin (`manage_branding` permission + editor) |
+| W5 | Isolation matrix (18 tests, 7 suites, all green in ~6s) |
+
+Subsequent passes on `main` build on that foundation:
+
+- **Backend correctness** — race fixes, dedup, perf, and security-posture
+  hardening across the API.
+- **UX / interaction polish** — button + card feedback, drawer motion, and
+  route-level loading skeletons (see [`DESIGN.md`](./DESIGN.md) §8).
+- **Membership UX** — single search-or-create "Add member" flow, inline
+  new-user creation, grant-role drawer, and explicit per-grant scope.
+- **Branding** — logo upload (inline) + accent, rendered in the header with a
+  graceful fallback; Anacity brand on no-tenant surfaces.
 
 Every load-bearing claim in the design has working code, a UI page,
 and a passing test (where the claim is API-enforceable). What's
