@@ -1,5 +1,5 @@
 import { BadRequestException, Body, Controller, ForbiddenException, Get, NotFoundException, Patch, Query, Req, UseGuards } from '@nestjs/common';
-import { IsHexColor, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsHexColor, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import type { Request } from 'express';
 import { JwtCookieGuard } from '../auth/jwt-cookie.guard';
 import { CurrentUser, type AuthedUser } from '../auth/current-user.decorator';
@@ -7,9 +7,13 @@ import { PrismaService } from '../prisma/prisma.service';
 import { TenantAdminService } from './tenant-admin.service';
 
 class UpdateBrandingDto {
+  // Accepts a URL/path or an inline data URI (uploaded logo). Capped so an
+  // inline image can't bloat the tenant row — ~700KB of base64 ≈ a ~500KB
+  // image, comfortably above a real logo.
   @IsOptional()
   @IsString()
   @MinLength(1)
+  @MaxLength(700_000, { message: 'Logo is too large — use an image under ~500KB.' })
   logo?: string;
 
   @IsOptional()
@@ -33,8 +37,11 @@ export class TenantsAdminController {
   async getMyTenant(@Req() req: Request, @CurrentUser() user: AuthedUser) {
     const tenant = await this.resolveTenantFromHeaders(req);
     // Anyone with an active membership in this tenant can read tenant info.
+    // Filter on the membership's own tenantId so tenant-wide memberships
+    // (communityId = null) count too — `community: { tenantId }` silently
+    // excluded tenant super admins.
     const memberCount = await this.prisma.membership.count({
-      where: { userId: user.id, deletedAt: null, status: 'active', community: { tenantId: tenant.id } },
+      where: { userId: user.id, tenantId: tenant.id, deletedAt: null, status: 'active' },
     });
     if (memberCount === 0) throw new ForbiddenException('Not a member of this tenant');
     return {
