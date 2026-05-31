@@ -458,18 +458,24 @@ function GrantRoleDrawer({
   onClose: () => void;
   onSaved: () => void | Promise<void>;
 }) {
-  // No preselection — an empty default avoids implying the member already
-  // holds the first role in the list, and prevents granting it by accident.
-  const [roleId, setRoleId] = useState('');
-  const [blockId, setBlockId] = useState('');
+  // Prefill with the member's current role + scope so the panel reflects
+  // what they actually hold (their first grant wins the prefill).
+  const current = membership.roles[0] ?? null;
+  const [roleId, setRoleId] = useState(current?.role.id ?? '');
+  const [blockId, setBlockId] = useState(current?.block?.id ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Roles this member already holds (community-wide) — surfaced so the
-  // dropdown can mark them and avoid silent duplicate grants.
-  const heldRoleIds = new Set(
+  // grantRole on the API is additive (no dedupe), so the UI must block
+  // re-granting an identical role+scope the member already holds.
+  const heldKey = (rid: string, bid: string) => `${rid}|${bid || ''}`;
+  const held = new Set(
+    membership.roles.map((r) => heldKey(r.role.id, r.block?.id ?? '')),
+  );
+  const heldCommunityWide = new Set(
     membership.roles.filter((r) => !r.block && !r.unit).map((r) => r.role.id),
   );
+  const alreadyHeld = !!roleId && held.has(heldKey(roleId, blockId));
 
   async function grant() {
     setBusy(true);
@@ -507,11 +513,10 @@ function GrantRoleDrawer({
             onChange={(e) => setRoleId(e.target.value)}
             className={selectClass}
           >
-            <option value="">— select a role —</option>
             {roles.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.name}
-                {heldRoleIds.has(r.id) ? ' (already granted)' : ''}
+                {heldCommunityWide.has(r.id) ? ' (already granted)' : ''}
               </option>
             ))}
           </select>
@@ -533,6 +538,12 @@ function GrantRoleDrawer({
             ))}
           </select>
         </label>
+        {alreadyHeld ? (
+          <p className="text-xs text-ink-tertiary">
+            This member already holds this role at this scope. Pick a different
+            role or scope to grant something new.
+          </p>
+        ) : null}
         {error ? (
           <p className="text-sm text-danger border-l-2 border-danger pl-3 py-1">
             {error}
@@ -541,10 +552,10 @@ function GrantRoleDrawer({
         <button
           type="button"
           onClick={grant}
-          disabled={busy || !roleId}
+          disabled={busy || !roleId || alreadyHeld}
           className="btn-brand w-full text-sm font-medium rounded py-2"
         >
-          {busy ? 'Granting…' : 'Grant role'}
+          {busy ? 'Granting…' : alreadyHeld ? 'Already granted' : 'Grant role'}
         </button>
       </div>
     </Drawer>
