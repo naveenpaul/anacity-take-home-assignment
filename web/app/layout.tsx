@@ -2,9 +2,9 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
-import Link from 'next/link';
 import { getCurrentUser } from './lib/auth';
 import { getTenant } from './tenant';
+import SiteHeader from './site-header';
 
 export const metadata: Metadata = {
   title: 'Anacity',
@@ -33,36 +33,10 @@ export default async function RootLayout({
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body className="font-sans bg-surface text-ink antialiased" style={cssVars}>
-        <header className="border-b border-line">
-          <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-3 group">
-              <div
-                className="w-6 h-6 rounded-sm"
-                style={{ background: 'var(--brand-primary)' }}
-              />
-              <div className="flex items-baseline gap-2">
-                <span className="text-base font-semibold tracking-tight">
-                  {tenant?.name ?? 'Anacity'}
-                </span>
-                {tenant ? (
-                  <span className="text-xs font-mono text-ink-tertiary">
-                    {tenant.slug}.localhost
-                  </span>
-                ) : null}
-              </div>
-            </Link>
-            {tenant && me ? (
-              <nav className="flex items-center gap-5 text-sm">
-                <Link
-                  href="/home"
-                  className="text-ink-secondary hover:text-ink transition-colors"
-                >
-                  Home
-                </Link>
-              </nav>
-            ) : null}
-          </div>
-        </header>
+        <SiteHeader
+          tenant={tenant ? { name: tenant.name, slug: tenant.slug } : null}
+          authed={!!me}
+        />
         <main className="max-w-7xl mx-auto px-6 py-10">{children}</main>
       </body>
     </html>
