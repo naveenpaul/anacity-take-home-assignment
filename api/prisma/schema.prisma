@@ -165,7 +165,11 @@ model Role {
   rolePermissions RolePermission[]
   membershipRoles MembershipRole[]
 
-  @@unique([communityId, name])
+  // (community_id, name) uniqueness is enforced by a PARTIAL unique index
+  // (WHERE deleted_at IS NULL), defined in migrations — Prisma can't express
+  // partial indexes in the schema (same approach as the memberships partial
+  // unique indexes). This lets a role name be reused after the prior role is
+  // soft-deleted, while still blocking two active roles with the same name.
   @@index([tenantId])
   @@map("roles")
 }

@@ -52,7 +52,7 @@ Seed users (password is always `dev`):
 ### Run the test suite
 
 ```bash
-pnpm --filter api test           # 42 backend tests (isolation + RBAC CRUD), ~13s
+pnpm --filter api test           # 43 backend tests (isolation + RBAC CRUD), ~13s
 pnpm --filter api test:isolation # same suite, named target
 pnpm --filter web test           # web component tests (Vitest + Testing Library)
 ```
@@ -257,7 +257,7 @@ taking effect on the next request.
 | See the test plan | §12 of the design doc; QA-focused view in [`docs/test-plan.md`](./docs/test-plan.md) |
 | See the implementation workstreams | [`docs/workstreams.md`](./docs/workstreams.md) |
 | See how to run it locally | [`docs/local-dev.md`](./docs/local-dev.md) — `*.localhost` tenant pattern, seed users, common workflows |
-| See the backend tests | [`api/test/isolation/`](./api/test/isolation/) — 11 specs, 42 tests: design §12 isolation + RBAC CRUD/read/error branches + the activity feed |
+| See the backend tests | [`api/test/isolation/`](./api/test/isolation/) — 11 specs, 43 tests: design §12 isolation + RBAC CRUD/read/error branches + the activity feed |
 | See the web tests | [`web/test/`](./web/test/) — Vitest component tests for the membership search-or-create + grant-role flows |
 
 ---
@@ -273,7 +273,7 @@ The foundation shipped as five workstreams:
 | W2 | Auth + dynamic RBAC + admin UI for roles and memberships |
 | W3 | UnitAction recording + per-community dashboard with activity feed |
 | W4 | Tenant branding admin (`manage_branding` permission + editor) |
-| W5 | Test suite — backend isolation + RBAC CRUD (42 tests, 11 suites) and web component tests (Vitest), all green |
+| W5 | Test suite — backend isolation + RBAC CRUD (43 tests, 11 suites) and web component tests (Vitest), all green |
 
 Subsequent passes on `main` build on that foundation:
 

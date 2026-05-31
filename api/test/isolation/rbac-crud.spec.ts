@@ -160,4 +160,28 @@ describe('rbac: CRUD + read coverage', () => {
       .send({ name: 'QA Temp Dupe', permissions: ['view_notices'] });
     expect(dupe.status).toBe(400);
   });
+
+  it('lets a role name be reused after the prior role is deleted', async () => {
+    const cookie = await login(app, 'alice@prestige.dev');
+    const base = `/v1/communities/${lakeside}/roles`;
+
+    const first = await request(app.getHttpServer())
+      .post(base)
+      .set('Cookie', cookie)
+      .send({ name: 'QA Temp Reuse', permissions: ['view_notices'] });
+    expect(first.status).toBe(201);
+
+    const removed = await request(app.getHttpServer())
+      .delete(`${base}/${first.body.id}`)
+      .set('Cookie', cookie);
+    expect(removed.status).toBe(200);
+
+    // partial unique index (WHERE deleted_at IS NULL) frees the name
+    const reused = await request(app.getHttpServer())
+      .post(base)
+      .set('Cookie', cookie)
+      .send({ name: 'QA Temp Reuse', permissions: ['view_visitors'] });
+    expect(reused.status).toBe(201);
+    expect(reused.body.id).not.toBe(first.body.id);
+  });
 });
