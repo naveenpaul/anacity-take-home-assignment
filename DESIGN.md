@@ -33,8 +33,8 @@ ask before improvising.
 
 > "Serious infrastructure" — Linear/Stripe/Vercel energy.
 
-When a reviewer opens the app, the first three seconds should read as
-"this is software a real business runs on," not "this is a take-home
+When someone opens the app, the first three seconds should read as
+"this is software a real business runs on," not "this is a throwaway
 demo." Every downstream choice in this document serves that one
 sentence.
 
@@ -329,7 +329,7 @@ These are reasons to reject a design choice without further debate:
 
 ## 12. The risks this system deliberately takes
 
-Documented so reviewers and future contributors understand the
+Documented so future contributors understand the
 choices were intentional, not defaults.
 
 1. **Tenant brand IS the UI accent.** Most multi-tenant SaaS keeps

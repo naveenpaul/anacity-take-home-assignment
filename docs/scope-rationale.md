@@ -4,12 +4,12 @@ Why the design and POC are sized the way they are, and what was
 deliberately left out. Front-loaded so it's clear which cuts were
 considered-and-deferred versus simply missed.
 
-The brief: redesign a session-based, single-active-community,
+The goal: redesign a session-based, single-active-community,
 fixed-role residential-community SaaS into a multi-community,
 dynamic-RBAC, white-labeled system, with **working code and a
 functioning POC with UI**.
 
-The architecture is built to that brief. Not larger.
+The architecture is built to that goal. Not larger.
 
 ---
 
@@ -59,11 +59,11 @@ communities shouldn't hand-rebuild the same six roles per community.
 Three tiers let the tenant override the system template once and have
 it propagate.
 
-**Why it was simplified to one tier:** the brief asks for dynamic
+**Why it was simplified to one tier:** the requirements ask for dynamic
 roles per community, not a multi-org role-management product. A single
 tier of system templates → community-instantiated roles solves the
 "don't hand-rebuild" problem with half the complexity to defend. The
-middle tier was solving a problem the brief doesn't have.
+middle tier was solving a problem the requirements don't have.
 
 ### UnitOccupant temporal model
 
@@ -71,7 +71,7 @@ middle tier was solving a problem the brief doesn't have.
 tenants, family members, ownership transfers, and "who lived in 4B in
 2023" audit queries.
 
-**Why it was cut from the POC:** the brief says "users under units."
+**Why it was cut from the POC:** the requirements say "users under units."
 Temporal occupancy is real-world but strictly additive — it doesn't
 change the RBAC or multi-community story at all. A simple
 `Membership` row suffices for the POC.
@@ -94,7 +94,7 @@ operation with a clear upgrade path (`pg_partman`, monthly ranges).
 **Why it was considered:** the existing system is live. A big-bang
 cutover of authorization is the highest-blast-radius change possible.
 
-**Why it was compressed:** the brief is a take-home, not a live
+**Why it was compressed:** this is a POC, not a live
 cutover. The migration phases exist for completeness — and the
 three mandatory regression tests are still listed — but a full
 dual-write bridge service is software that won't be exercised. A
@@ -106,25 +106,24 @@ doc; the implementation is a follow-on if the design is accepted.
 ## What was preserved (and why)
 
 The design *kept* the items below because cutting them would weaken
-the answer to the brief, not because they're nice-to-have.
+the architecture itself, not because they're nice-to-have.
 
 | Kept | If it were cut, this would happen |
 |---|---|
-| **Tenant as first-class entity** | Branding would have to live on the community, fragmenting the customer's identity — the exact problem the brief calls out under "weak white-labeling." |
-| **Stateless URL-scoped APIs** | Multi-tab + deep-links + bookmarks would still be broken — the brief's headline problem. Dynamic roles can technically work without this, but the multi-community story falls apart. |
+| **Tenant as first-class entity** | Branding would have to live on the community, fragmenting the customer's identity — the exact problem called out under "weak white-labeling." |
+| **Stateless URL-scoped APIs** | Multi-tab + deep-links + bookmarks would still be broken — the headline problem. Dynamic roles can technically work without this, but the multi-community story falls apart. |
 | **Permission-based CASL checks** | "Dynamic roles" without permission-based checks is just a UI for editing role *names*. Business logic stays coupled to role names, and the new role doesn't actually do anything until code changes. |
-| **Block/unit-scoped role grants** | The brief's hierarchy goes Community → Block → Unit. A real role like "Tower-3 Night Security" needs scope below community. One paragraph + one worked example earns its place. |
-| **RBAC audit log** | First question after any privilege incident is "who granted whom what, when?" For a senior role this is table stakes. |
-| **Migration story (compressed)** | The brief explicitly says "currently session-based, move to new architecture." Without a migration plan, the answer is incomplete — but five lines is sufficient depth for a take-home. |
+| **Block/unit-scoped role grants** | The hierarchy goes Community → Block → Unit. A real role like "Tower-3 Night Security" needs scope below community. One paragraph + one worked example earns its place. |
+| **RBAC audit log** | First question after any privilege incident is "who granted whom what, when?" For production RBAC this is table stakes. |
+| **Migration story (compressed)** | The system is currently session-based and must move to the new architecture. Without a migration plan, the design is incomplete — but five lines is sufficient depth for a POC. |
 | **Mandatory regression tests** | The three regressions (existing users can still log in; fixed roles map to dynamic roles with identical permissions; existing unit↔user links become memberships with no data loss) are the only thing standing between a successful design and a customer outage during cutover. |
 
 ---
 
-## Seniority signals deliberately preserved
+## Engineering signals deliberately preserved
 
-For a senior backend role, the reviewer is screening for *judgment*
-as much as *coverage*. The architecture preserves the following
-signals:
+Sound backend architecture demonstrates *judgment* as much as
+*coverage*. The design preserves the following signals:
 
 - **Defense-in-depth thinking** → §10 RLS upgrade path with the
   reasoning for why it's deferred rather than missing.
@@ -145,12 +144,12 @@ signals:
 
 ## Anti-pattern: shipping everything
 
-A common failure mode for take-home submissions is to ship the entire
-production system at POC depth — Caddy stub, fake ACME, mock RLS,
-half-implemented partitioning. The reviewer sees breadth without
-quality and concludes the candidate doesn't know how to scope.
+A common failure mode is to ship the entire production system at POC
+depth — Caddy stub, fake ACME, mock RLS, half-implemented
+partitioning. The result is breadth without quality, and a system
+where nothing is actually load-bearing.
 
-This submission ships the brief at depth, and names every cut
+This POC ships the core requirements at depth, and names every cut
 explicitly. The cuts above are not gaps in the design; they are
 deliberate scoping decisions with the upgrade path written down.
 

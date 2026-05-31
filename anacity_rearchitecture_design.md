@@ -497,7 +497,7 @@ Users (global identities):
   ravi     security across all Prestige communities
 ```
 
-### Demo flow (what a reviewer will see)
+### Demo flow (what you will see)
 
 1. Visit `prestige.localhost:3000` → Prestige branding (blue, Prestige logo).
 2. Log in as `alice` → her dashboard shows **both Prestige communities side

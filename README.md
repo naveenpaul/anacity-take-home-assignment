@@ -5,12 +5,12 @@
 > platform with stateless APIs, dynamic RBAC, community-scoped
 > permissions, and per-tenant white-labeling.
 
-This repository contains the **design + POC** for that re-architecture
-(submitted as a take-home assignment). The canonical design is in
+This repository contains the **design + POC** for that re-architecture.
+The canonical design is in
 [`anacity_rearchitecture_design.md`](./anacity_rearchitecture_design.md).
 A focused test plan is in [`docs/test-plan.md`](./docs/test-plan.md).
 
-> **Reviewing this submission?** Start with
+> **New here?** Start with
 > [`docs/scope-rationale.md`](./docs/scope-rationale.md) — it explains
 > what was deliberately cut from the POC (RLS, vanity domains,
 > partitioning, temporal occupancy) and where the upgrade path lives
@@ -264,7 +264,7 @@ taking effect on the next request.
 
 ## Status
 
-This submission is a **design + working POC + isolation test suite**.
+This project is a **design + working POC + isolation test suite**.
 The foundation shipped as five workstreams:
 
 | Workstream | Scope |

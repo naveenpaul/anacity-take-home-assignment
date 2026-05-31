@@ -6,7 +6,7 @@ Prisma scoping are in place. After W1, W2/W3/W4 run in parallel.
 W5 (tests) ramps alongside everything.
 
 Production-rollout migration is sketched in design doc §8; it is not
-required for the POC submission.
+required for the POC.
 
 ---
 
