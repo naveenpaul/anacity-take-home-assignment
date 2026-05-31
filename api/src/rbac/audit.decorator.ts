@@ -4,7 +4,7 @@ import type { PrismaService } from '../prisma/prisma.service';
 export const AUDIT_KEY = 'rbac_audit';
 
 export type AuditMetadata = {
-  entity: 'Role' | 'RolePermission' | 'Membership' | 'MembershipRole';
+  entity: 'Role' | 'RolePermission' | 'Membership' | 'MembershipRole' | 'User';
   action: 'create' | 'update' | 'delete';
   fetchBefore?: (
     prisma: PrismaService,

@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -203,6 +204,95 @@ export class RbacService {
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         throw new BadRequestException('User already a member of this community');
+      }
+      throw err;
+    }
+  }
+
+  // Create a brand-new global user and immediately seat them in this
+  // community. Distinct from createMembership (which attaches an *existing*
+  // tenant user) — this is the only path that mints a new identity. The
+  // user + membership are created in one transaction so a failed membership
+  // never leaves an orphan account.
+  async createUserAndMembership(input: {
+    communityId: string;
+    name: string;
+    email: string;
+    password?: string | null;
+    initialRoleId?: string | null;
+    initialBlockId?: string | null;
+    grantedById: string;
+  }) {
+    const community = await this.prisma.community.findUnique({
+      where: { id: input.communityId },
+      select: { tenantId: true },
+    });
+    if (!community) throw new NotFoundException('Community not found');
+
+    const email = input.email.trim().toLowerCase();
+    if (!email) throw new BadRequestException('Email is required');
+    const name = input.name.trim();
+    if (!name) throw new BadRequestException('Name is required');
+
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      throw new BadRequestException(
+        'A user with this email already exists. Add them from existing members instead.',
+      );
+    }
+
+    // Validate scope BEFORE minting the account so a bad role/block can't
+    // create an orphan user.
+    if (input.initialRoleId) {
+      const role = await this.prisma.role.findUnique({ where: { id: input.initialRoleId } });
+      if (!role || role.deletedAt) throw new NotFoundException('Role not found');
+      if (role.communityId !== input.communityId) {
+        throw new BadRequestException('Role does not belong to this community');
+      }
+    }
+    if (input.initialBlockId) {
+      const block = await this.prisma.block.findUnique({ where: { id: input.initialBlockId } });
+      if (!block || block.communityId !== input.communityId) {
+        throw new BadRequestException('Block not in this community');
+      }
+    }
+
+    // POC convention: new users get a temporary password (default "dev",
+    // matching the seed) they can be reset off later.
+    const passwordHash = await bcrypt.hash(input.password?.trim() || 'dev', 10);
+
+    try {
+      const result = await this.prisma.$transaction(async (tx) => {
+        const user = await tx.user.create({
+          data: { name, email, passwordHash },
+          select: { id: true, name: true, email: true },
+        });
+        const membership = await tx.membership.create({
+          data: {
+            userId: user.id,
+            tenantId: community.tenantId,
+            communityId: input.communityId,
+            status: 'active',
+            ...(input.initialRoleId
+              ? {
+                  membershipRoles: {
+                    create: {
+                      roleId: input.initialRoleId,
+                      blockId: input.initialBlockId ?? null,
+                      grantedById: input.grantedById,
+                    },
+                  },
+                }
+              : {}),
+          },
+          select: { id: true },
+        });
+        return { user, membershipId: membership.id };
+      });
+      return { user: result.user, membershipId: result.membershipId };
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new BadRequestException('A user with this email already exists.');
       }
       throw err;
     }

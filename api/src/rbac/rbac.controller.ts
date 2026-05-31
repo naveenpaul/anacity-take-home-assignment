@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post, UseGuards, UseInterceptors } from '@nestjs/common';
-import { IsArray, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import { IsArray, IsEmail, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 import { JwtCookieGuard } from '../auth/jwt-cookie.guard';
 import { CurrentUser, type AuthedUser } from '../auth/current-user.decorator';
 import { PermissionsGuard } from './permissions.guard';
@@ -54,6 +54,28 @@ class GrantRoleDto {
 class CreateMembershipDto {
   @IsUUID()
   userId!: string;
+
+  @IsOptional()
+  @IsUUID()
+  initialRoleId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  initialBlockId?: string;
+}
+
+class CreateUserDto {
+  @IsString()
+  @MinLength(1)
+  name!: string;
+
+  @IsEmail()
+  email!: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  password?: string;
 
   @IsOptional()
   @IsUUID()
@@ -166,6 +188,25 @@ export class RbacController {
     return this.rbac.createMembership({
       userId: dto.userId,
       communityId,
+      initialRoleId: dto.initialRoleId ?? null,
+      initialBlockId: dto.initialBlockId ?? null,
+      grantedById: current.id,
+    });
+  }
+
+  @Post('communities/:communityId/users')
+  @RequirePermissions('assign_roles')
+  @Audit({ entity: 'User', action: 'create' })
+  createUser(
+    @Param('communityId') communityId: string,
+    @Body() dto: CreateUserDto,
+    @CurrentUser() current: AuthedUser,
+  ) {
+    return this.rbac.createUserAndMembership({
+      communityId,
+      name: dto.name,
+      email: dto.email,
+      password: dto.password ?? null,
       initialRoleId: dto.initialRoleId ?? null,
       initialBlockId: dto.initialBlockId ?? null,
       grantedById: current.id,
