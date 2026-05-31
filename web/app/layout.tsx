@@ -17,7 +17,10 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const [tenant, me] = await Promise.all([getTenant(), getCurrentUser()]);
-  const primary = tenant?.branding?.primaryColor ?? '#525252';
+  // No tenant resolved (bare host / landing) → fall back to the Anacity
+  // product brand (violet from the wordmark) rather than neutral gray, so
+  // the header, CTAs, and focus rings read as branded, not unstyled.
+  const primary = tenant?.branding?.primaryColor ?? '#7A357A';
 
   // Hex (#RRGGBB) → rgba with 10% alpha for soft accent surfaces (badges, hover).
   const primarySoft = hexToSoftRgba(primary, 0.1);

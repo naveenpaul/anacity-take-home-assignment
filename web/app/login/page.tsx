@@ -50,7 +50,7 @@ export default function LoginPage() {
         <img
           src="/logo-6.png"
           alt="Anacity — Powering Smarter Communities"
-          className="h-10 w-auto"
+          className="h-10 w-auto mx-auto block"
         />
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>

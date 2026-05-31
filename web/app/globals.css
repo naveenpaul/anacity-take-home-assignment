@@ -18,9 +18,10 @@
     --border-default: #e5e7eb;
     --border-strong: #d4d4d8;
 
-    /* Brand accent — overridden per tenant in layout.tsx */
-    --brand-primary: #525252;
-    --brand-primary-soft: rgba(82, 82, 82, 0.1);
+    /* Brand accent — overridden per tenant in layout.tsx. Default is the
+       Anacity product violet (no-tenant / landing); tenants replace it. */
+    --brand-primary: #7a357a;
+    --brand-primary-soft: rgba(122, 53, 122, 0.1);
 
     /* Semantic */
     --success: #16a34a;

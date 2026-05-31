@@ -132,8 +132,10 @@ key/value highlights — not just the header logo.
 ### Tenant accent (dynamic)
 
 Loaded from `Tenant.branding.primaryColor` at render time and set on
-`--brand-primary` in the layout. Default fallback: `#525252` (neutral
-gray) when no tenant is resolved.
+`--brand-primary` in the layout. Default fallback: `#7A357A` (Anacity
+product violet, from the wordmark) when no tenant is resolved — the
+bare-host landing/login should read as the Anacity brand, not unstyled
+gray.
 
 - Prestige seed: `#0047AB` (Vercel-blue-adjacent)
 - Sobha seed: `#16A34A` (forest green)
@@ -355,3 +357,4 @@ choices were intentional, not defaults.
 | Date | Decision | Rationale |
 |---|---|---|
 | 2026-05-28 | Initial design system created | `/design-consultation` session; "serious infrastructure" direction chosen over "approachable property tech" and "quiet craft." Tenant-accent-as-UI-color and mono-as-semantic-signal accepted as deliberate risks. |
+| 2026-05-31 | No-tenant brand fallback changed from neutral gray `#525252` to Anacity violet `#7A357A` | The bare-host landing/login was reading as unstyled gray. Adopted a single solid violet from the Anacity wordmark as the product brand for the no-tenant state. Solid color only (not a gradient) — the §11 "no purple gradient" rule still holds. |
