@@ -65,3 +65,86 @@
     color: var(--surface-base);
   }
 }
+
+@layer components {
+  /* Primary CTA — filled brand. Color + feedback only; callers keep
+     their own padding/width utilities so nothing shifts layout.
+     Hover/active per DESIGN.md §8 (hover 150ms, press 100ms, ease-out). */
+  .btn-brand {
+    background: var(--brand-primary);
+    color: #fff;
+    transition:
+      filter 150ms ease-out,
+      transform 100ms ease-out,
+      opacity 150ms ease-out;
+  }
+  .btn-brand:hover:not(:disabled) {
+    filter: brightness(1.08);
+  }
+  .btn-brand:active:not(:disabled) {
+    filter: brightness(0.92);
+    transform: translateY(0.5px);
+  }
+  .btn-brand:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Secondary — transparent with strong border (DESIGN.md §9). */
+  .btn-secondary {
+    color: var(--text-primary);
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    transition:
+      background-color 150ms ease-out,
+      border-color 150ms ease-out,
+      transform 100ms ease-out;
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--surface-muted);
+  }
+  .btn-secondary:active:not(:disabled) {
+    transform: translateY(0.5px);
+  }
+}
+
+@layer utilities {
+  /* Modal / sheet motion — DESIGN.md §8: sheet enter 200ms ease-out,
+     backdrop fade 150ms. Transform/opacity only (no layout animation). */
+  @keyframes overlay-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes sheet-in {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+  .animate-overlay-in {
+    animation: overlay-in 150ms ease-out;
+  }
+  .animate-sheet-in {
+    animation: sheet-in 200ms ease-out;
+    will-change: transform;
+  }
+}
+
+/* Respect reduced-motion: kill entrance choreography and press shifts,
+   keep color/opacity feedback (those aren't "motion"). */
+@media (prefers-reduced-motion: reduce) {
+  .animate-overlay-in,
+  .animate-sheet-in {
+    animation: none !important;
+  }
+  .btn-brand:active:not(:disabled),
+  .btn-secondary:active:not(:disabled) {
+    transform: none !important;
+  }
+}
