@@ -41,17 +41,27 @@ export class RbacService {
       const missing = input.permissions.filter((p) => !known.has(p));
       throw new BadRequestException(`Unknown permission(s): ${missing.join(', ')}`);
     }
-    const role = await this.prisma.role.create({
-      data: {
-        tenantId: input.tenantId,
-        communityId: input.communityId,
-        name: input.name,
-        description: input.description,
-        rolePermissions: { create: perms.map((p) => ({ permissionId: p.id })) },
-      },
-      include: { rolePermissions: { include: { permission: true } } },
-    });
-    return this.shapeRole(role);
+    try {
+      const role = await this.prisma.role.create({
+        data: {
+          tenantId: input.tenantId,
+          communityId: input.communityId,
+          name: input.name,
+          description: input.description,
+          rolePermissions: { create: perms.map((p) => ({ permissionId: p.id })) },
+        },
+        include: { rolePermissions: { include: { permission: true } } },
+      });
+      return this.shapeRole(role);
+    } catch (err) {
+      // (community_id, name) is unique — surface a clean 400 instead of a 500.
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new BadRequestException(
+          'A role with this name already exists in this community.',
+        );
+      }
+      throw err;
+    }
   }
 
   async updateRole(communityId: string, roleId: string, input: { name?: string; description?: string; permissions?: string[] }) {
