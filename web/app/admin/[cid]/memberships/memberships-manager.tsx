@@ -606,12 +606,15 @@ function MembershipRow({
                     <span className="text-xs font-mono text-ink-tertiary px-1.5 py-0.5 rounded-full bg-surface-muted">
                       scope: {mr.block.name}
                     </span>
-                  ) : null}
-                  {mr.unit ? (
+                  ) : mr.unit ? (
                     <span className="text-xs font-mono text-ink-tertiary px-1.5 py-0.5 rounded-full bg-surface-muted">
                       scope: unit {mr.unit.label}
                     </span>
-                  ) : null}
+                  ) : (
+                    <span className="text-xs font-mono text-ink-tertiary px-1.5 py-0.5 rounded-full bg-surface-muted">
+                      community-wide
+                    </span>
+                  )}
                 </div>
                 <button
                   onClick={() => onRevoke(membership.id, mr.id)}
