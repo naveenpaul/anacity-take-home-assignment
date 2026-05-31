@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+
+const MAX_LOGO_BYTES = 400 * 1024;
 
 type Branding = {
   logo: string;
@@ -25,6 +27,28 @@ export default function BrandingForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [logoError, setLogoError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-picking the same file
+    if (!file) return;
+    setLogoError(null);
+    if (!file.type.startsWith('image/')) {
+      setLogoError('Please choose an image file (PNG, SVG, JPG).');
+      return;
+    }
+    if (file.size > MAX_LOGO_BYTES) {
+      setLogoError('Image is too large — keep it under 400 KB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () =>
+      setLogo(typeof reader.result === 'string' ? reader.result : '');
+    reader.onerror = () => setLogoError('Could not read that file.');
+    reader.readAsDataURL(file);
+  }
 
   async function submit() {
     setBusy(true);
@@ -65,14 +89,60 @@ export default function BrandingForm({
 
         <div>
           <label className="block text-xs font-medium text-ink-secondary mb-1.5">
-            Logo URL
+            Logo
           </label>
+          <div className="flex items-center gap-3">
+            <div className="w-16 h-16 border border-line-strong rounded-sm bg-surface-muted flex items-center justify-center overflow-hidden shrink-0">
+              {logo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={logo}
+                  alt="Logo preview"
+                  className="max-w-full max-h-full object-contain"
+                />
+              ) : (
+                <span className="text-2xs text-ink-tertiary">No logo</span>
+              )}
+            </div>
+            <div className="flex flex-col items-start gap-1.5">
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={onPickFile}
+              />
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="btn-secondary text-sm font-medium rounded px-3 py-1.5"
+              >
+                Upload image
+              </button>
+              {logo ? (
+                <button
+                  type="button"
+                  onClick={() => setLogo('')}
+                  className="text-xs text-ink-tertiary hover:text-ink transition-colors"
+                >
+                  Remove
+                </button>
+              ) : null}
+            </div>
+          </div>
+          {logoError ? (
+            <p className="text-xs text-danger mt-1.5">{logoError}</p>
+          ) : null}
           <input
-            value={logo}
+            value={logo.startsWith('data:') ? '' : logo}
             onChange={(e) => setLogo(e.target.value)}
-            placeholder="/brand/your-logo.svg"
-            className="w-full font-mono border border-line-strong rounded text-sm px-3 py-2 bg-surface"
+            placeholder="…or paste an image URL (/brand/logo.svg)"
+            className="w-full font-mono border border-line-strong rounded text-sm px-3 py-2 bg-surface mt-2"
           />
+          <p className="text-xs text-ink-tertiary mt-1.5">
+            PNG, SVG, or JPG up to 400 KB. Uploads are stored inline on the
+            tenant.
+          </p>
         </div>
 
         <div>
@@ -133,10 +203,19 @@ export default function BrandingForm({
         </h3>
         <div className="border border-line rounded-sm p-4 space-y-4 bg-surface-raised">
           <div className="flex items-center gap-3">
-            <div
-              className="w-8 h-8 rounded-sm"
-              style={{ background: primaryColor }}
-            />
+            {logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={logo}
+                alt=""
+                className="h-8 w-auto max-w-[120px] object-contain"
+              />
+            ) : (
+              <div
+                className="w-8 h-8 rounded-sm"
+                style={{ background: primaryColor }}
+              />
+            )}
             <div>
               <p className="font-semibold text-sm">{tenantName}</p>
               <p className="font-mono text-xs text-ink-tertiary">
@@ -163,8 +242,7 @@ export default function BrandingForm({
             </span>
           </div>
           <p className="text-xs text-ink-tertiary">
-            Logo URL:{' '}
-            <code className="font-mono">{logo || '(none)'}</code>
+            {logo ? 'Logo applies to the header on next load.' : 'No logo set.'}
           </p>
         </div>
       </aside>

@@ -34,7 +34,15 @@ export default async function RootLayout({
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body className="font-sans bg-surface text-ink antialiased" style={cssVars}>
         <SiteHeader
-          tenant={tenant ? { name: tenant.name, slug: tenant.slug } : null}
+          tenant={
+            tenant
+              ? {
+                  name: tenant.name,
+                  slug: tenant.slug,
+                  logo: tenant.branding?.logo ?? null,
+                }
+              : null
+          }
           authed={!!me}
         />
         <main className="max-w-7xl mx-auto px-6 py-10">{children}</main>
