@@ -45,11 +45,19 @@ export default function LoginPage() {
 
   return (
     <div className="max-w-sm mx-auto space-y-10 pt-10">
-      <div className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
-        <p className="text-sm text-ink-secondary">
-          Authenticate to manage communities, units, and roles.
-        </p>
+      <div className="space-y-6">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/logo-6.png"
+          alt="Anacity — Powering Smarter Communities"
+          className="h-10 w-auto"
+        />
+        <div className="space-y-2">
+          <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
+          <p className="text-sm text-ink-secondary">
+            Authenticate to manage communities, units, and roles.
+          </p>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
