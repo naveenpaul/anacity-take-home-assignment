@@ -140,7 +140,8 @@
    keep color/opacity feedback (those aren't "motion"). */
 @media (prefers-reduced-motion: reduce) {
   .animate-overlay-in,
-  .animate-sheet-in {
+  .animate-sheet-in,
+  .animate-pulse {
     animation: none !important;
   }
   .btn-brand:active:not(:disabled),
