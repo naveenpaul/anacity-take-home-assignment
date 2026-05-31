@@ -157,7 +157,7 @@ function AddMemberDrawer({
   return (
     <div className="fixed inset-0 z-40 flex">
       <div
-        className="flex-1"
+        className="flex-1 animate-overlay-in"
         style={{ background: 'rgb(0 0 0 / 0.25)' }}
         onClick={onClose}
         aria-hidden="true"
@@ -165,7 +165,7 @@ function AddMemberDrawer({
       <aside
         role="dialog"
         aria-label="Add member"
-        className="w-full max-w-md bg-surface border-l border-line-strong h-full flex flex-col"
+        className="w-full max-w-md bg-surface border-l border-line-strong h-full flex flex-col animate-sheet-in"
       >
         <div className="px-5 py-4 border-b border-line flex items-start justify-between gap-4">
           <div className="space-y-0.5">
