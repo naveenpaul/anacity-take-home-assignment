@@ -200,36 +200,49 @@ function AddMemberDrawer({
   onClose: () => void;
   onSaved: () => void | Promise<void>;
 }) {
-  // Default to "new" when there's nobody left to attach — otherwise the
-  // drawer used to be a dead end.
-  const [mode, setMode] = useState<'existing' | 'new'>(
-    eligibleUsers.length > 0 ? 'existing' : 'new',
-  );
-
-  // existing-user fields
-  const [userId, setUserId] = useState(eligibleUsers[0]?.id ?? '');
-  // new-user fields
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  // One flow, create-on-miss: search the tenant's existing users; if the
+  // typed value is an email that matches nobody, fall through to creating
+  // a new account. No mode toggle.
+  const [query, setQuery] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [newName, setNewName] = useState('');
   const [password, setPassword] = useState('');
-  // shared role/scope
   const [roleId, setRoleId] = useState('');
   const [blockId, setBlockId] = useState('');
-
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const q = query.trim().toLowerCase();
+  const matches = q
+    ? eligibleUsers.filter(
+        (u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q),
+      )
+    : eligibleUsers;
+
+  const selected = selectedUserId
+    ? (eligibleUsers.find((u) => u.id === selectedUserId) ?? null)
+    : null;
+  const isEmail = /\S+@\S+\.\S+/.test(query.trim());
+  const exactExisting = eligibleUsers.some((u) => u.email.toLowerCase() === q);
+  // Create a new account when nothing existing is selected, the query is a
+  // valid email, and it doesn't exactly match an addable tenant user.
+  const creatingNew = !selected && isEmail && !exactExisting;
+
+  function selectExisting(id: string) {
+    const u = eligibleUsers.find((x) => x.id === id);
+    setSelectedUserId(id);
+    setQuery(u ? u.email : '');
+    setNewName('');
+    setError(null);
+  }
 
   async function submit() {
     setBusy(true);
     setError(null);
 
     let res: Response;
-    if (mode === 'existing') {
-      if (!userId) {
-        setBusy(false);
-        return;
-      }
-      const body: Record<string, string> = { userId };
+    if (selected) {
+      const body: Record<string, string> = { userId: selected.id };
       if (roleId) body.initialRoleId = roleId;
       if (roleId && blockId) body.initialBlockId = blockId;
       res = await fetch(`/api/v1/communities/${communityId}/memberships`, {
@@ -239,7 +252,7 @@ function AddMemberDrawer({
         credentials: 'include',
       });
     } else {
-      const body: Record<string, string> = { name, email };
+      const body: Record<string, string> = { name: newName.trim(), email: query.trim() };
       if (password) body.password = password;
       if (roleId) body.initialRoleId = roleId;
       if (roleId && blockId) body.initialBlockId = blockId;
@@ -260,88 +273,85 @@ function AddMemberDrawer({
     await onSaved();
   }
 
-  const newUserValid = name.trim().length > 0 && /\S+@\S+\.\S+/.test(email);
-  const canSubmit = mode === 'existing' ? !!userId : newUserValid;
+  const canSubmit = selected ? true : creatingNew && newName.trim().length > 0;
 
   return (
-    <Drawer title="Add member" subtitle="Bring someone into this community" onClose={onClose}>
+    <Drawer title="Add member" subtitle="Search or create someone" onClose={onClose}>
       <div className="space-y-5">
-        {/* Mode toggle */}
-        <div className="grid grid-cols-2 gap-1 p-1 border border-line rounded-sm bg-surface-muted">
-          {(['existing', 'new'] as const).map((m) => {
-            const active = mode === m;
-            return (
-              <button
-                key={m}
-                type="button"
-                onClick={() => {
-                  setMode(m);
-                  setError(null);
-                }}
-                className="text-xs font-medium rounded-sm px-2 py-1.5 transition-colors"
-                style={
-                  active
-                    ? {
-                        background: 'var(--brand-primary-soft)',
-                        color: 'var(--brand-primary)',
-                      }
-                    : { color: 'var(--text-secondary)' }
-                }
-              >
-                {m === 'existing' ? 'Existing user' : 'New user'}
-              </button>
-            );
-          })}
-        </div>
+        <label className="block">
+          <FieldLabel>Search by name or email</FieldLabel>
+          <input
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setSelectedUserId(null);
+              setError(null);
+            }}
+            placeholder="Type a name, or a new email to create…"
+            className={`${inputClass} ${selected ? 'font-mono' : ''}`}
+            autoFocus
+          />
+        </label>
 
-        {mode === 'existing' ? (
-          eligibleUsers.length === 0 ? (
-            <div className="text-sm text-ink-secondary border border-line rounded-sm p-4 space-y-2">
-              <p>Everyone in this tenant is already a member here.</p>
-              <p className="text-xs text-ink-tertiary">
-                Switch to <span className="font-medium">New user</span> above to
-                create a brand-new account and seat them here.
-              </p>
+        {/* Existing tenant users matching the query (not yet members here) */}
+        {!selected && !creatingNew ? (
+          matches.length > 0 ? (
+            <div className="border border-line rounded-sm divide-y divide-line max-h-56 overflow-y-auto">
+              {matches.map((u) => (
+                <button
+                  key={u.id}
+                  type="button"
+                  onClick={() => selectExisting(u.id)}
+                  className="w-full text-left px-3 py-2 hover:bg-surface-muted transition-colors"
+                >
+                  <div className="text-sm font-medium">{u.name}</div>
+                  <div className="text-xs font-mono text-ink-tertiary">{u.email}</div>
+                </button>
+              ))}
             </div>
           ) : (
-            <label className="block">
-              <FieldLabel>User</FieldLabel>
-              <select
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
-                className={selectClass}
-              >
-                {eligibleUsers.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name} — {u.email}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-ink-tertiary mt-1.5">
-                Listing users with an active membership in any community in this
-                tenant.
-              </p>
-            </label>
+            <p className="text-xs text-ink-tertiary px-1">
+              {query.trim()
+                ? 'No tenant member matches. Type a full email address to create a new user.'
+                : 'No existing tenant members left to add — type an email to create someone new.'}
+            </p>
           )
-        ) : (
-          <div className="space-y-4">
+        ) : null}
+
+        {/* Chosen existing user */}
+        {selected ? (
+          <div className="flex items-center justify-between border border-line rounded-sm px-3 py-2 bg-surface-raised">
+            <div>
+              <div className="text-sm font-medium">{selected.name}</div>
+              <div className="text-xs font-mono text-ink-tertiary">{selected.email}</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedUserId(null);
+                setQuery('');
+              }}
+              className="text-xs text-ink-tertiary hover:text-ink transition-colors"
+            >
+              Change
+            </button>
+          </div>
+        ) : null}
+
+        {/* Create-new fields (query is an email that matches nobody) */}
+        {creatingNew ? (
+          <div className="space-y-4 border border-line rounded-sm p-4">
+            <p className="text-xs text-ink-secondary">
+              No match for <span className="font-mono">{query.trim()}</span> —
+              creating a new user.
+            </p>
             <label className="block">
               <FieldLabel>Name</FieldLabel>
               <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
                 placeholder="e.g. Priya Nair"
                 className={inputClass}
-              />
-            </label>
-            <label className="block">
-              <FieldLabel>Email</FieldLabel>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="priya@tenant.dev"
-                className={`${inputClass} font-mono`}
               />
             </label>
             <label className="block">
@@ -357,14 +367,13 @@ function AddMemberDrawer({
               />
               <p className="text-xs text-ink-tertiary mt-1.5">
                 Defaults to <span className="font-mono">dev</span> if left blank.
-                The user can change it later.
               </p>
             </label>
           </div>
-        )}
+        ) : null}
 
-        {/* Shared role + scope — applies to both modes */}
-        {!(mode === 'existing' && eligibleUsers.length === 0) ? (
+        {/* Role + scope — once a target (existing or new) is chosen */}
+        {selected || creatingNew ? (
           <>
             <label className="block">
               <FieldLabel>
@@ -406,28 +415,28 @@ function AddMemberDrawer({
                 </select>
               </label>
             ) : null}
-
-            {error ? (
-              <p className="text-sm text-danger border-l-2 border-danger pl-3 py-1">
-                {error}
-              </p>
-            ) : null}
-
-            <button
-              type="button"
-              onClick={submit}
-              disabled={busy || !canSubmit}
-              className="btn-brand w-full text-sm font-medium rounded py-2"
-            >
-              {busy
-                ? mode === 'new'
-                  ? 'Creating…'
-                  : 'Adding…'
-                : mode === 'new'
-                  ? 'Create user & add'
-                  : 'Add to community'}
-            </button>
           </>
+        ) : null}
+
+        {error ? (
+          <p className="text-sm text-danger border-l-2 border-danger pl-3 py-1">{error}</p>
+        ) : null}
+
+        {selected || creatingNew ? (
+          <button
+            type="button"
+            onClick={submit}
+            disabled={busy || !canSubmit}
+            className="btn-brand w-full text-sm font-medium rounded py-2"
+          >
+            {busy
+              ? creatingNew
+                ? 'Creating…'
+                : 'Adding…'
+              : creatingNew
+                ? 'Create user & add'
+                : 'Add to community'}
+          </button>
         ) : null}
       </div>
     </Drawer>
