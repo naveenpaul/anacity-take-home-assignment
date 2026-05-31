@@ -458,10 +458,18 @@ function GrantRoleDrawer({
   onClose: () => void;
   onSaved: () => void | Promise<void>;
 }) {
-  const [roleId, setRoleId] = useState(roles[0]?.id ?? '');
+  // No preselection — an empty default avoids implying the member already
+  // holds the first role in the list, and prevents granting it by accident.
+  const [roleId, setRoleId] = useState('');
   const [blockId, setBlockId] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Roles this member already holds (community-wide) — surfaced so the
+  // dropdown can mark them and avoid silent duplicate grants.
+  const heldRoleIds = new Set(
+    membership.roles.filter((r) => !r.block && !r.unit).map((r) => r.role.id),
+  );
 
   async function grant() {
     setBusy(true);
@@ -499,9 +507,11 @@ function GrantRoleDrawer({
             onChange={(e) => setRoleId(e.target.value)}
             className={selectClass}
           >
+            <option value="">— select a role —</option>
             {roles.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.name}
+                {heldRoleIds.has(r.id) ? ' (already granted)' : ''}
               </option>
             ))}
           </select>
