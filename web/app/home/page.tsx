@@ -137,9 +137,9 @@ export default async function HomePage() {
               return (
                 <div
                   key={m.id}
-                  className="border border-line rounded-sm hover:border-line-strong transition-colors"
+                  className="border border-line rounded-sm hover:border-line-strong hover:bg-surface-raised transition-colors"
                 >
-                  <Link href={`/c/${m.community.id}`} className="block p-4 space-y-3">
+                  <Link href={`/c/${m.community.id}`} className="group block p-4 space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="font-medium truncate">{m.community.name}</p>
@@ -165,7 +165,10 @@ export default async function HomePage() {
                       </div>
                     </div>
                     <p className="text-sm font-medium" style={{ color: 'var(--brand-primary)' }}>
-                      Open dashboard →
+                      Open dashboard{' '}
+                      <span className="inline-block transition-transform duration-150 group-hover:translate-x-0.5">
+                        →
+                      </span>
                     </p>
                   </Link>
                   {isAdmin ? (

@@ -222,11 +222,11 @@ function UnitCard({
       type="button"
       onClick={onSelect}
       disabled={!canAct}
-      className={`text-left border rounded-sm px-3 py-2 flex items-center justify-between transition-colors ${
+      className={`text-left border rounded-sm px-3 py-2 flex items-center justify-between transition-[border-color,background-color,transform] duration-150 ${
         selected
           ? 'border-line-strong bg-surface-raised'
-          : 'border-line hover:border-line-strong'
-      } ${canAct ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
+          : 'border-line hover:border-line-strong hover:bg-surface-raised'
+      } ${canAct ? 'cursor-pointer active:translate-y-[0.5px]' : 'cursor-not-allowed opacity-60'}`}
     >
       <span className="font-mono text-sm font-medium">{unit.label}</span>
       {canAct ? (
