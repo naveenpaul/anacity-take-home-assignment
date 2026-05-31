@@ -173,11 +173,7 @@ export default function UnitsBoard({
                   </span>{' '}
                   <span className="font-mono font-medium">{a.unitLabel}</span>
                 </p>
-                {Object.keys(a.metadata).length > 0 ? (
-                  <p className="text-xs text-ink-secondary font-mono">
-                    {JSON.stringify(a.metadata)}
-                  </p>
-                ) : null}
+                <ActionMeta metadata={a.metadata} />
                 <p className="text-xs font-mono text-ink-tertiary">
                   {new Date(a.createdAt).toLocaleString()}
                 </p>
@@ -201,6 +197,26 @@ export default function UnitsBoard({
           }}
           onClose={() => setSelectedUnit(null)}
         />
+      ) : null}
+    </div>
+  );
+}
+
+// Render action metadata readably instead of dumping raw JSON. The common
+// `note` reads as a quoted line; any other keys render as key: value pairs.
+function ActionMeta({ metadata }: { metadata: Record<string, unknown> }) {
+  const note = typeof metadata.note === 'string' ? metadata.note : null;
+  const rest = Object.entries(metadata).filter(
+    ([k, v]) => k !== 'note' && v != null && v !== '',
+  );
+  if (!note && rest.length === 0) return null;
+  return (
+    <div className="space-y-0.5">
+      {note ? <p className="text-xs text-ink-secondary italic">&ldquo;{note}&rdquo;</p> : null}
+      {rest.length > 0 ? (
+        <p className="text-xs text-ink-tertiary font-mono">
+          {rest.map(([k, v]) => `${k}: ${String(v)}`).join(' · ')}
+        </p>
       ) : null}
     </div>
   );
