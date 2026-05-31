@@ -65,8 +65,7 @@ export default function MembershipsManager({
         </div>
         <button
           onClick={() => setAdding(true)}
-          className="text-sm font-medium text-white rounded px-3 py-1.5"
-          style={{ background: 'var(--brand-primary)' }}
+          className="btn-brand text-sm font-medium rounded px-3 py-1.5"
         >
           + Add member
         </button>
@@ -269,8 +268,7 @@ function AddMemberDrawer({
                 type="button"
                 onClick={submit}
                 disabled={busy || !userId}
-                className="w-full text-sm font-medium text-white rounded py-2 disabled:opacity-50"
-                style={{ background: 'var(--brand-primary)' }}
+                className="btn-brand w-full text-sm font-medium rounded py-2"
               >
                 {busy ? 'Adding…' : 'Add to community'}
               </button>
@@ -420,8 +418,7 @@ function MembershipRow({
               <button
                 onClick={grant}
                 disabled={busy || !roleId}
-                className="text-sm font-medium text-white rounded px-3 py-1.5 disabled:opacity-50"
-                style={{ background: 'var(--brand-primary)' }}
+                className="btn-brand text-sm font-medium rounded px-3 py-1.5"
               >
                 {busy ? '…' : 'Grant'}
               </button>

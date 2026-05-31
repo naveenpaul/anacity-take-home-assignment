@@ -120,7 +120,7 @@ export default function BrandingForm({
         <button
           onClick={submit}
           disabled={busy}
-          className="text-sm font-medium text-white rounded px-4 py-2 disabled:opacity-50"
+          className="btn-brand text-sm font-medium rounded px-4 py-2"
           style={{ background: primaryColor }}
         >
           {busy ? 'Saving…' : 'Save branding'}

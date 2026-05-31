@@ -87,8 +87,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={busy}
-          className="w-full text-sm font-medium text-white rounded py-2 disabled:opacity-50 transition-opacity"
-          style={{ background: 'var(--brand-primary)' }}
+          className="btn-brand w-full text-sm font-medium rounded py-2"
         >
           {busy ? 'Signing in…' : 'Sign in'}
         </button>

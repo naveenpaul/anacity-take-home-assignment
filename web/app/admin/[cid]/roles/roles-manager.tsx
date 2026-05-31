@@ -59,8 +59,7 @@ export default function RolesManager({
 
       <button
         onClick={() => setCreating(true)}
-        className="text-sm font-medium text-white rounded px-3 py-1.5"
-        style={{ background: 'var(--brand-primary)' }}
+        className="btn-brand text-sm font-medium rounded px-3 py-1.5"
       >
         + New custom role
       </button>
@@ -333,14 +332,13 @@ function RoleForm({
         <button
           onClick={submit}
           disabled={busy || !name}
-          className="text-sm font-medium text-white rounded px-3 py-1.5 disabled:opacity-50"
-          style={{ background: 'var(--brand-primary)' }}
+          className="btn-brand text-sm font-medium rounded px-3 py-1.5"
         >
           {busy ? 'Saving…' : mode === 'create' ? 'Create role' : 'Save'}
         </button>
         <button
           onClick={onCancel}
-          className="text-sm font-medium border border-line-strong rounded px-3 py-1.5 text-ink-secondary hover:text-ink transition-colors"
+          className="btn-secondary text-sm font-medium rounded px-3 py-1.5"
         >
           Cancel
         </button>

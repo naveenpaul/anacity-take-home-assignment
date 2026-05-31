@@ -338,8 +338,7 @@ function ActionDrawer({
             type="button"
             onClick={submit}
             disabled={busy || !actionType}
-            className="w-full text-sm font-medium text-white rounded py-2 disabled:opacity-50"
-            style={{ background: 'var(--brand-primary)' }}
+            className="btn-brand w-full text-sm font-medium rounded py-2"
           >
             {busy ? 'Recording…' : 'Record action'}
           </button>
